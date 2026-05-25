@@ -1,60 +1,29 @@
 import { Router } from "express";
-import { db, ticketsTable, ticketMessagesTable, ratingsTable } from "../db.js";
-import { eq, and, desc } from "drizzle-orm";
+import { getTickets, getTicket, getMessages, getRating, updateTicket } from "../db.js";
 
 const router = Router();
 
-router.get("/guilds/:guildId/tickets", async (req, res) => {
+router.get("/guilds/:guildId/tickets", (req, res) => {
   const { guildId } = req.params;
   const { status, limit = "50", offset = "0" } = req.query;
-
-  const conditions = [eq(ticketsTable.guildId, guildId)];
-  if (status) conditions.push(eq(ticketsTable.status, status));
-
-  const tickets = await db.select().from(ticketsTable)
-    .where(and(...conditions))
-    .orderBy(desc(ticketsTable.createdAt))
-    .limit(Number(limit))
-    .offset(Number(offset));
-
+  const tickets = getTickets(guildId, status || null, Number(limit), Number(offset));
   res.json({ tickets });
 });
 
-router.get("/guilds/:guildId/tickets/:id", async (req, res) => {
+router.get("/guilds/:guildId/tickets/:id", (req, res) => {
   const { guildId, id } = req.params;
-
-  const ticket = await db.select().from(ticketsTable)
-    .where(and(eq(ticketsTable.guildId, guildId), eq(ticketsTable.id, Number(id))))
-    .then(r => r[0]);
-
-  if (!ticket) { res.status(404).json({ error: "Ticket nicht gefunden" }); return; }
-
-  const messages = await db.select().from(ticketMessagesTable)
-    .where(eq(ticketMessagesTable.ticketId, ticket.id))
-    .orderBy(ticketMessagesTable.createdAt);
-
-  const rating = await db.select().from(ratingsTable)
-    .where(eq(ratingsTable.ticketId, ticket.id))
-    .then(r => r[0]);
-
+  const ticket = getTicket(Number(id));
+  if (!ticket || ticket.guild_id !== guildId) { res.status(404).json({ error: "Ticket nicht gefunden" }); return; }
+  const messages = getMessages(ticket.id);
+  const rating = getRating(ticket.id);
   res.json({ ticket, messages, rating });
 });
 
-router.patch("/guilds/:guildId/tickets/:id", async (req, res) => {
+router.patch("/guilds/:guildId/tickets/:id", (req, res) => {
   const { guildId, id } = req.params;
   const { status, priority, assignedTo } = req.body;
-
-  const updated = await db.update(ticketsTable)
-    .set({
-      ...(status !== undefined ? { status } : {}),
-      ...(priority !== undefined ? { priority } : {}),
-      ...(assignedTo !== undefined ? { assignedTo } : {}),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(ticketsTable.guildId, guildId), eq(ticketsTable.id, Number(id))))
-    .returning();
-
-  res.json({ ticket: updated[0] });
+  const ticket = updateTicket(Number(id), { status, priority, assignedTo });
+  res.json({ ticket });
 });
 
 export default router;

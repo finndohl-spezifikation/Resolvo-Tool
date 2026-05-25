@@ -2,10 +2,13 @@ import { Router } from "express";
 import {
   verifyDiscordRequest, InteractionType, InteractionResponseType,
   ephemeralReply, embedReply, ticketEmbed, closeButton, ratingButtons,
-  openTicketButton, analyzeSentiment, createChannel, deleteChannel, sendMessage,
+  openTicketButton, createChannel, deleteChannel, sendMessage,
 } from "../discord.js";
-import { db, guildsTable, usersTable, ticketsTable, ratingsTable } from "../db.js";
-import { eq, and } from "drizzle-orm";
+import {
+  upsertGuild, upsertUser, getGuild,
+  getOpenTicketByUser, createTicket, getTicketByChannel, closeTicket,
+  addRating, getTickets,
+} from "../db.js";
 
 const router = Router();
 
@@ -17,17 +20,14 @@ router.post("/interactions", async (req, res) => {
   const timestamp = req.headers["x-signature-timestamp"];
   if (!signature || !timestamp) { res.status(401).json({ error: "Fehlende Signatur-Header" }); return; }
 
-  const rawBody = JSON.stringify(req.body);
-  if (!verifyDiscordRequest(publicKey, signature, timestamp, rawBody)) {
-    res.status(401).json({ error: "Ungültige Signatur" });
-    return;
+  if (!verifyDiscordRequest(publicKey, signature, timestamp, JSON.stringify(req.body))) {
+    res.status(401).json({ error: "Ungültige Signatur" }); return;
   }
 
   const interaction = req.body;
 
   if (interaction.type === InteractionType.PING) {
-    res.json({ type: InteractionResponseType.PONG });
-    return;
+    res.json({ type: InteractionResponseType.PONG }); return;
   }
 
   try {
@@ -50,8 +50,8 @@ async function handleCommand(interaction, res) {
   const userId = interaction.member?.user?.id || interaction.user?.id;
   const username = interaction.member?.user?.username || interaction.user?.username;
 
-  await ensureGuild(guildId, interaction.guild?.name || "Unbekannt");
-  await ensureUser(userId, username);
+  upsertGuild(guildId, interaction.guild?.name || "Unbekannt");
+  upsertUser(userId, username);
 
   switch (name) {
     case "ticket": {
@@ -86,13 +86,13 @@ async function handleCommand(interaction, res) {
     }
 
     case "setup": {
-      const guild = await db.select().from(guildsTable).where(eq(guildsTable.id, guildId)).then(r => r[0]);
+      const guild = getGuild(guildId);
       res.json(embedReply({
         title: "⚙️ Resolvo Tool Setup",
         description: `Server **${guild?.name || "Unbekannt"}** ist eingerichtet!\n\nVerwende \`/panel\` um ein Ticket-Panel zu erstellen.`,
         color: 0x57f287,
         fields: [
-          { name: "Premium", value: guild?.isPremium ? "✅ Aktiv" : "❌ Inaktiv", inline: true },
+          { name: "Premium", value: guild?.is_premium ? "✅ Aktiv" : "❌ Inaktiv", inline: true },
           { name: "Tickets", value: "Bereit", inline: true },
         ],
         footer: { text: "Resolvo Tool" },
@@ -101,8 +101,8 @@ async function handleCommand(interaction, res) {
     }
 
     case "stats": {
-      const open = await db.select().from(ticketsTable).where(and(eq(ticketsTable.guildId, guildId), eq(ticketsTable.status, "open")));
-      const closed = await db.select().from(ticketsTable).where(and(eq(ticketsTable.guildId, guildId), eq(ticketsTable.status, "closed")));
+      const open = getTickets(guildId, "open");
+      const closed = getTickets(guildId, "closed");
       res.json(embedReply({
         title: "📊 Server Statistiken",
         color: 0x5865f2,
@@ -122,7 +122,7 @@ async function handleCommand(interaction, res) {
       const checkoutUrl = `${baseUrl}/api/premium/checkout?user=${userId}&guild=${guildId}`;
       res.json(embedReply({
         title: "⭐ Resolvo Tool Premium",
-        description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n• 🤖 KI-Antwortvorschläge\n• 📊 Erweiterte Statistiken\n• 🏷️ Unbegrenzte Ticket-Kategorien\n• 🏆 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99€** — dauerhafter Zugang!\n\n[✨ Jetzt upgraden](${checkoutUrl})`,
+        description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n• 📊 Erweiterte Statistiken\n• 🏷️ Unbegrenzte Ticket-Kategorien\n• 🏆 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99€** — dauerhafter Zugang!\n\n[✨ Jetzt upgraden](${checkoutUrl})`,
         color: 0xffd700,
         footer: { text: "Resolvo Tool Premium" },
       }, true));
@@ -141,7 +141,7 @@ async function handleComponent(interaction, res) {
   const username = interaction.member?.user?.username || interaction.user?.username;
   const channelId = interaction.channel_id;
 
-  await ensureUser(userId, username);
+  upsertUser(userId, username);
 
   if (customId === "create_ticket") {
     await handleCreateTicket(interaction, res, guildId, userId, username);
@@ -163,10 +163,8 @@ async function handleComponent(interaction, res) {
 
   if (customId.startsWith("rate_")) {
     const rating = parseInt(customId.split("_")[1]);
-    const ticket = await db.select().from(ticketsTable).where(eq(ticketsTable.channelId, channelId)).then(r => r[0]);
-    if (ticket) {
-      await db.insert(ratingsTable).values({ ticketId: ticket.id, rating });
-    }
+    const ticket = getTicketByChannel(channelId);
+    if (ticket) addRating(ticket.id, rating, null);
     res.json(ephemeralReply(`✅ Danke für deine Bewertung von **${rating}/5** ⭐`));
     return;
   }
@@ -175,13 +173,11 @@ async function handleComponent(interaction, res) {
 }
 
 async function handleCreateTicket(interaction, res, guildId, userId, username) {
-  await ensureGuild(guildId, interaction.guild?.name || "Server");
+  upsertGuild(guildId, interaction.guild?.name || "Server");
 
-  const existingOpen = await db.select().from(ticketsTable)
-    .where(and(eq(ticketsTable.guildId, guildId), eq(ticketsTable.userId, userId), eq(ticketsTable.status, "open")));
-
-  if (existingOpen.length > 0) {
-    res.json(ephemeralReply(`❌ Du hast bereits ein offenes Ticket: <#${existingOpen[0].channelId}>`));
+  const existing = getOpenTicketByUser(guildId, userId);
+  if (existing) {
+    res.json(ephemeralReply(`❌ Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`));
     return;
   }
 
@@ -193,13 +189,9 @@ async function handleCreateTicket(interaction, res, guildId, userId, username) {
       { id: userId, allow: ["1024", "2048", "65536"] },
     ]);
 
-    const [ticket] = await db.insert(ticketsTable).values({
-      guildId, userId, channelId: channel.id, status: "open", priority: "medium",
-    }).returning();
-
-    const embed = ticketEmbed(ticket.id, userId);
-    await sendMessage(channel.id, `<@${userId}>`, closeButton(), [embed]);
-    console.log(`Ticket #${ticket.id} erstellt für ${userId} in ${guildId}`);
+    const ticket = createTicket(guildId, userId, channel.id);
+    await sendMessage(channel.id, `<@${userId}>`, closeButton(), [ticketEmbed(ticket.id, userId)]);
+    console.log(`Ticket #${ticket.id} erstellt für ${userId}`);
   } catch (err) {
     console.error("Fehler beim Erstellen des Ticket-Kanals:", err);
   }
@@ -207,17 +199,12 @@ async function handleCreateTicket(interaction, res, guildId, userId, username) {
 
 async function handleCloseTicket(interaction, res, guildId, userId) {
   const channelId = interaction.channel_id;
-
-  const ticket = await db.select().from(ticketsTable)
-    .where(and(eq(ticketsTable.channelId, channelId), eq(ticketsTable.guildId, guildId)))
-    .then(r => r[0]);
+  const ticket = getTicketByChannel(channelId);
 
   if (!ticket) { res.json(ephemeralReply("❌ Kein Ticket in diesem Kanal gefunden.")); return; }
   if (ticket.status === "closed") { res.json(ephemeralReply("❌ Dieses Ticket ist bereits geschlossen.")); return; }
 
-  await db.update(ticketsTable)
-    .set({ status: "closed", closedAt: new Date(), updatedAt: new Date() })
-    .where(eq(ticketsTable.id, ticket.id));
+  closeTicket(ticket.id);
 
   res.json(embedReply({
     title: "🔒 Ticket geschlossen",
@@ -230,16 +217,6 @@ async function handleCloseTicket(interaction, res, guildId, userId) {
   setTimeout(async () => {
     try { await deleteChannel(channelId); } catch (err) { console.error("Kanal löschen fehlgeschlagen:", err); }
   }, 5000);
-}
-
-async function ensureGuild(guildId, name) {
-  await db.insert(guildsTable).values({ id: guildId, name })
-    .onConflictDoUpdate({ target: guildsTable.id, set: { name, updatedAt: new Date() } });
-}
-
-async function ensureUser(userId, username) {
-  await db.insert(usersTable).values({ id: userId, username })
-    .onConflictDoUpdate({ target: usersTable.id, set: { username, updatedAt: new Date() } });
 }
 
 export default router;
