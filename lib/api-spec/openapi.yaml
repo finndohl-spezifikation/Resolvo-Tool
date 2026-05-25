@@ -1,0 +1,240 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Resolvo Tool API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: tickets
+    description: Ticket operations
+  - name: stats
+    description: Statistics operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /guilds/{guildId}/tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: List tickets for a guild
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ticket"
+                required: [tickets]
+
+  /guilds/{guildId}/tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [tickets]
+      summary: Get a specific ticket
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Ticket detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTicket
+      tags: [tickets]
+      summary: Update a ticket
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketUpdate"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: "#/components/schemas/Ticket"
+                required: [ticket]
+
+  /guilds/{guildId}/stats:
+    get:
+      operationId: getGuildStats
+      tags: [stats]
+      summary: Get statistics for a guild
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Guild statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildStats"
+
+  /stats/public/{guildId}:
+    get:
+      operationId: getPublicStats
+      tags: [stats]
+      summary: Get public statistics for a guild
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Public stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStats"
+        "404":
+          description: Not found
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Ticket:
+      type: object
+      properties:
+        id: { type: integer }
+        guildId: { type: string }
+        userId: { type: string }
+        channelId: { type: string }
+        categoryId: { type: ["integer", "null"] }
+        assignedTo: { type: ["string", "null"] }
+        status: { type: string }
+        priority: { type: string }
+        subject: { type: ["string", "null"] }
+        sentimentScore: { type: ["number", "null"] }
+        firstResponseAt: { type: ["string", "null"] }
+        closedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, guildId, userId, channelId, status, priority, createdAt, updatedAt]
+
+    TicketMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        ticketId: { type: integer }
+        authorId: { type: string }
+        authorName: { type: string }
+        content: { type: string }
+        discordMessageId: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required: [id, ticketId, authorId, authorName, content, createdAt]
+
+    TicketRating:
+      type: object
+      properties:
+        id: { type: integer }
+        ticketId: { type: integer }
+        rating: { type: integer }
+        comment: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required: [id, ticketId, rating, createdAt]
+
+    TicketDetail:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/Ticket"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketMessage"
+        rating:
+          $ref: "#/components/schemas/TicketRating"
+      required: [ticket, messages]
+
+    TicketUpdate:
+      type: object
+      properties:
+        status: { type: string }
+        priority: { type: string }
+        assignedTo: { type: ["string", "null"] }
+
+    GuildStats:
+      type: object
+      properties:
+        open: { type: integer }
+        closed: { type: integer }
+        total: { type: integer }
+        avgRating: { type: ["string", "null"] }
+        thisMonth: { type: integer }
+        recentTickets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ticket"
+      required: [open, closed, total, thisMonth, recentTickets]
+
+    PublicStats:
+      type: object
+      properties:
+        guildName: { type: string }
+        guildIcon: { type: ["string", "null"] }
+        totalTickets: { type: integer }
+        closedTickets: { type: integer }
+        resolutionRate: { type: integer }
+        avgRating: { type: ["string", "null"] }
+        isPremium: { type: boolean }
+      required: [guildName, totalTickets, closedTickets, resolutionRate, isPremium]
