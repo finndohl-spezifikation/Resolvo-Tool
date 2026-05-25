@@ -1,83 +1,50 @@
-# Resolvo Tool
+# Resolvo Tool — Discord Ticket Bot
 
-A professional Discord ticket bot with a live web dashboard, AI-powered suggestions, and premium features.
+Ein öffentlicher Discord-Ticket-Bot mit Live-Web-Dashboard.
 
 ## Features
 
-- 🎫 Discord ticket system with slash commands
-- 📊 Real-time web dashboard
-- 🤖 Sentiment analysis for incoming tickets
-- ⭐ Staff rating system
-- 📈 Public server transparency stats
-- ⭐ Premium plan (€5.99 one-time) via Stripe
+- 🎫 Slash-Commands: `/ticket`, `/panel`, `/setup`, `/stats`, `/premium`
+- 📊 Ticket-Management mit Prioritäten und Status
+- ⭐ Staff-Bewertungen (1–5 Sterne)
+- 💜 Stimmungsanalyse bei Tickets
+- 📈 Öffentliche Server-Statistiken
+- 💳 Stripe-Premium für 5,99€ (einmalig, dauerhaft)
 
-## Slash Commands
+## Deployment auf Railway
 
-| Command | Description |
-|---------|-------------|
-| `/ticket create` | Create a new support ticket |
-| `/ticket close` | Close the current ticket |
-| `/ticket add @user` | Add a user to the ticket |
-| `/ticket remove @user` | Remove a user from the ticket |
-| `/panel` | Create a ticket panel in a channel |
-| `/setup` | Configure the bot on your server |
-| `/stats` | Show server support statistics |
-| `/premium` | View and purchase premium features |
+### 1. Umgebungsvariablen setzen
 
-## Setup
+| Variable | Beschreibung |
+|---|---|
+| `DISCORD_TOKEN` | Bot-Token aus dem Discord Dev Portal |
+| `DISCORD_CLIENT_ID` | Application ID aus dem Discord Dev Portal |
+| `DISCORD_PUBLIC_KEY` | Public Key aus dem Discord Dev Portal |
+| `DATABASE_URL` | PostgreSQL Connection String (Railway stellt diesen bereit) |
+| `STRIPE_SECRET_KEY` | Stripe Secret Key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook Secret |
+| `DASHBOARD_URL` | Deine Railway-Domain (z.B. `https://resolvo-tool.up.railway.app`) |
+| `PORT` | Wird von Railway automatisch gesetzt |
 
-### Environment Variables (Railway)
+### 2. Discord konfigurieren
 
-| Variable | Description |
-|----------|-------------|
-| `DISCORD_TOKEN` | Discord bot token |
-| `DISCORD_CLIENT_ID` | Discord application ID |
-| `DISCORD_PUBLIC_KEY` | Discord public key for interactions |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `STRIPE_SECRET_KEY` | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `DASHBOARD_URL` | Public URL of your deployment |
-| `PORT` | Server port (Railway sets this automatically) |
+Im Discord Developer Portal → deine App → General Information:
 
-### Discord Developer Portal
+- **Interactions Endpoint URL:** `https://deine-domain/api/interactions`
+- **Terms of Service URL:** `https://deine-domain/api/terms`
+- **Privacy Policy URL:** `https://deine-domain/api/privacy`
 
-1. Go to [discord.com/developers/applications](https://discord.com/developers/applications)
-2. Create a new application named **Resolvo Tool**
-3. Under **Bot**: Reset and copy your token → `DISCORD_TOKEN`
-4. Under **General Information**: Copy Application ID → `DISCORD_CLIENT_ID`
-5. Under **General Information**: Copy Public Key → `DISCORD_PUBLIC_KEY`
-6. Set **Interactions Endpoint URL** to: `https://YOUR_RAILWAY_DOMAIN/api/interactions`
-7. Set **Terms of Service URL** to: `https://YOUR_RAILWAY_DOMAIN/api/terms`
-8. Set **Privacy Policy URL** to: `https://YOUR_RAILWAY_DOMAIN/api/privacy`
+### 3. Slash-Commands registrieren
 
-### Register Slash Commands
-
-After deployment, run once:
+Nach dem ersten erfolgreichen Deploy im Railway-Terminal:
 
 ```bash
-pnpm --filter @workspace/api-server run commands:register
+node src/commands/register.js
 ```
 
-### Invite Bot to Server
-
-Use this URL (replace `CLIENT_ID`):
-```
-https://discord.com/oauth2/authorize?client_id=CLIENT_ID&scope=bot+applications.commands&permissions=8
-```
-
-## Tech Stack
-
-- **Bot/API**: Node.js + Express + TypeScript
-- **Dashboard**: React + Vite + Tailwind CSS
-- **Database**: PostgreSQL + Drizzle ORM
-- **Payments**: Stripe
-- **Hosting**: Railway
-- **CI/CD**: GitHub → Railway
-
-## Development
+## Lokale Entwicklung
 
 ```bash
-pnpm install
-pnpm --filter @workspace/api-server run dev
-pnpm --filter @workspace/dashboard run dev
+npm install
+PORT=8080 DATABASE_URL=... DISCORD_TOKEN=... node src/index.js
 ```
