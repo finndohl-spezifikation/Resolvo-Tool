@@ -165,5 +165,45 @@ import { Router } from "express";
     } catch { return null; }
   }
 
+  
+  // OAuth setup helper - shows current redirect URI
+  router.get("/auth/setup", (req, res) => {
+    const baseUrl = getBaseUrl(req);
+    const clientId = getClientId();
+    const redirectUri = `${baseUrl}/auth/callback`;
+    res.send(`
+      <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>OAuth Setup - Resolvo Tool</title>
+      <style>body{font-family:system-ui;background:#070a14;color:#e6f1ff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+      .box{background:#0d1526;border:1px solid #1a2a4a;border-radius:16px;padding:40px;max-width:520px;text-align:center}
+      h1{color:#4f8cff;font-size:1.5rem;margin-bottom:8px}p{color:#8aa2c9;line-height:1.6;margin:8px 0}
+      .url{background:#121e36;padding:12px 16px;border-radius:8px;color:#00e5ff;font-family:monospace;font-size:.9rem;word-break:break-all;margin:16px 0;border:1px solid #1a2a4a}
+      .btn{background:#4f8cff;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:1rem;cursor:pointer;margin-top:16px;text-decoration:none;display:inline-block}
+      .btn:hover{background:#3a7aee}
+      .step{background:#121e36;padding:16px;border-radius:8px;margin:12px 0;text-align:left;border:1px solid #1a2a4a}
+      .step h3{color:#4f8cff;margin:0 0 8px 0;font-size:1rem}
+      .step p{margin:4px 0;font-size:.9rem}
+      code{background:#1a2a4a;padding:2px 6px;border-radius:4px;color:#00e5ff;font-size:.85rem}
+      </style></head><body>
+      <div class="box">
+        <h1>Discord OAuth2 Setup</h1>
+        <p>Fuege diese URL in deiner Discord App als Redirect ein:</p>
+        <div class="url" id="uri">${redirectUri}</div>
+        <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('uri').innerText);this.innerText='Kopiert!';setTimeout(()=>this.innerText='URL kopieren',2000)">URL kopieren</button>
+        <div class="step">
+          <h3>Schritt 1: Discord Developer Portal</h3>
+          <p>1. Gehe zu <a href="https://discord.com/developers/applications/${clientId}/oauth2" style="color:#2979ff" target="_blank">Discord Developer Portal</a></p>
+          <p>2. Fuege unter "Redirects" diese URL hinzu:</p>
+          <p><code>${redirectUri}</code></p>
+        </div>
+        <div class="step">
+          <h3>Schritt 2: Zurueck zum Dashboard</h3>
+          <p>Nach dem Speichern in Discord kannst du dich <a href="/auth/login" style="color:#2979ff">hier einloggen</a>.</p>
+        </div>
+        <p style="font-size:.8rem;color:#5a7099;margin-top:16px">Erkannte Domain: <code>${baseUrl}</code></p>
+      </div></body></html>
+    `);
+  });
+
   export default router;
   
