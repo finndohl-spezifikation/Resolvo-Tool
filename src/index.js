@@ -5,9 +5,6 @@ import app from "./app.js";
   if (!process.env.DISCORD_TOKEN) {
     console.error("FEHLER: DISCORD_TOKEN ist nicht gesetzt!"); process.exit(1);
   }
-  if (!process.env.DISCORD_PUBLIC_KEY) {
-    console.error("FEHLER: DISCORD_PUBLIC_KEY ist nicht gesetzt!"); process.exit(1);
-  }
 
   const port = Number(process.env.PORT || 8080);
 
