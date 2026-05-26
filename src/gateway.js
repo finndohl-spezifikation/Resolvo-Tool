@@ -148,7 +148,7 @@ async function handleSlashCommand(interaction) {
       const isSetup = config?.panel_channel_id && config?.ticket_category_id;
       await interaction.reply({
         embeds: [{
-          title: "\u2699\ufe0f Resolvo Tool Setup",
+          title: "Resolvo Tool Setup",
           description: isSetup
             ? `Server **${guild?.name || "Unbekannt"}** ist vollst\u00e4ndig eingerichtet!\n\nVerwende \`/panel\` um die Konfiguration anzupassen.`
             : `Server **${guild?.name || "Unbekannt"}** ist teilweise eingerichtet.\n\nVerwende \`/panel\` um die Einrichtung abzuschlie\u00dfen.`,
@@ -170,12 +170,12 @@ async function handleSlashCommand(interaction) {
       const closed = getTickets(guildId, "closed");
       await interaction.reply({
         embeds: [{
-          title: "\ud83d\udcca Server Statistiken",
+          title: "Server Statistiken",
           color: 0x5865f2,
           fields: [
-            { name: "\ud83d\udfe2 Offene Tickets", value: String(open.length), inline: true },
-            { name: "\ud83d\udd12 Geschlossene Tickets", value: String(closed.length), inline: true },
-            { name: "\ud83d\udcc8 Gesamt", value: String(open.length + closed.length), inline: true },
+            { name: "Offene Tickets", value: String(open.length), inline: true },
+            { name: "Geschlossene Tickets", value: String(closed.length), inline: true },
+            { name: "Gesamt", value: String(open.length + closed.length), inline: true },
           ],
           footer: { text: "Resolvo Tool \u2022 Live Stats" },
           timestamp: new Date().toISOString(),
@@ -184,14 +184,50 @@ async function handleSlashCommand(interaction) {
       break;
     }
 
-    case "premium": {
+    case "category": {
+        const catSub = interaction.options.getSubcommand();
+        if (catSub === "add") {
+          const name = interaction.options.getString("name");
+          const color = interaction.options.getString("color") || "#4f8cff";
+          const description = interaction.options.getString("description") || "";
+          const id = addTicketCategory(guildId, name, color, description, null);
+          await interaction.reply({ content: `Kategorie "${name}" hinzugefügt (ID: ${id}).`, flags: 64 });
+        } else if (catSub === "list") {
+          const cats = getTicketCategories(guildId);
+          const lines = cats.map(c => `ID ${c.id}: ${c.name} (${c.color})`).join("\n") || "Keine Kategorien vorhanden.";
+          await interaction.reply({ content: `**Ticket-Kategorien:**\n${lines}`, flags: 64 });
+        } else if (catSub === "remove") {
+          const id = interaction.options.getInteger("id");
+          deleteTicketCategory(id);
+          await interaction.reply({ content: `Kategorie ID ${id} entfernt.`, flags: 64 });
+        }
+        break;
+      }
+
+      case "faq": {
+        const faqSub = interaction.options.getSubcommand();
+        if (faqSub === "add") {
+          const question = interaction.options.getString("question");
+          const answer = interaction.options.getString("answer");
+          const trigger = interaction.options.getString("trigger") || "";
+          const id = addFaqEntry(guildId, question, answer, trigger);
+          await interaction.reply({ content: `FAQ-Eintrag hinzugefügt (ID: ${id}).`, flags: 64 });
+        } else if (faqSub === "list") {
+          const faqs = getFaqEntries(guildId);
+          const lines = faqs.map(f => `ID ${f.id}: ${f.question}`).join("\n") || "Keine FAQ-Einträge vorhanden.";
+          await interaction.reply({ content: `**Smart FAQ:**\n${lines}`, flags: 64 });
+        }
+        break;
+      }
+
+      case "premium": {
       const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
       const checkoutUrl = `${baseUrl}/premium`;
       // User will see instructions on the premium page to use /premium in their server
       await interaction.reply({
         embeds: [{
-          title: "\u2b50 Resolvo Tool Premium",
-          description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n\u2022 \ud83d\udcca Erweiterte Statistiken\n\u2022 \ud83c\udff7\ufe0f Unbegrenzte Ticket-Kategorien\n\u2022 \ud83c\udfc6 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99\u20ac** \u2014 dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
+          title: "Resolvo Tool Premium",
+          description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n\u2022 Erweiterte Statistiken\n\u2022 Unbegrenzte Ticket-Kategorien\n\u2022 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99\u20ac** \u2014 dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
           color: 0xffd700,
           footer: { text: "Resolvo Tool Premium" },
         }],
@@ -434,7 +470,7 @@ async function publishPanel(interaction, guildId) {
       components: openTicketButton(config),
     });
 
-    await interaction.reply({ content: `\u2705 Panel wurde in <#${config.panel_channel_id}> ver\u00f6ffentlicht!`, flags: 64 });
+    await interaction.reply({ content: `Panel wurde in <#${config.panel_channel_id}> ver\u00f6ffentlicht!`, flags: 64 });
   } catch (err) {
     console.error("Panel ver\u00f6ffentlichen fehlgeschlagen:", err);
     await interaction.reply({ content: `Fehler beim Ver\u00f6ffentlichen: ${err.message}`, flags: 64 });
@@ -444,19 +480,19 @@ async function publishPanel(interaction, guildId) {
 function setupButtons() {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_panel_ch").setLabel("Panel-Channel").setEmoji({ name: "📌" }).setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_cat").setLabel("Kategorie").setEmoji({ name: "📁" }).setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_transcript").setLabel("Transkript").setEmoji({ name: "📋" }).setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_role").setLabel("Support-Rolle").setEmoji({ name: "👥" }).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_panel_ch").setLabel("Panel-Channel").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_cat").setLabel("Kategorie").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_transcript").setLabel("Transkript").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_role").setLabel("Support-Rolle").setStyle(ButtonStyle.Primary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_btn_text").setLabel("Button-Text").setEmoji({ name: "✏️" }).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("cfg_btn_color").setLabel("Button-Farbe").setEmoji({ name: "🎨" }).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("cfg_embed_color").setLabel("Embed-Farbe").setEmoji({ name: "🎨" }).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_btn_text").setLabel("Button-Text").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_btn_color").setLabel("Button-Farbe").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_embed_color").setLabel("Embed-Farbe").setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_publish").setLabel("Panel ver\u00f6ffentlichen").setEmoji({ name: "🚀" }).setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId("cfg_cancel").setLabel("Abbrechen").setEmoji({ name: "❌" }).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("cfg_publish").setLabel("Panel ver\u00f6ffentlichen").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("cfg_cancel").setLabel("Abbrechen").setStyle(ButtonStyle.Danger),
     ),
   ];
 }
@@ -551,7 +587,7 @@ async function handleCloseTicket(interaction, guildId, userId) {
 
   await interaction.reply({
     embeds: [{
-      title: "\ud83d\udd12 Ticket geschlossen",
+      title: "Ticket geschlossen",
       description: `Ticket #${ticket.id} wurde von <@${userId}> geschlossen.\n\nDer Kanal wird in **5 Sekunden** gel\u00f6scht.`,
       color: 0xed4245,
       footer: { text: "Resolvo Tool" },
