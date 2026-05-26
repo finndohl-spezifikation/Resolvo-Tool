@@ -1,38 +1,44 @@
-import app from "./app.js";
-import { runMigrations } from "./db.js";
-import { startGatewayBot, stopGatewayBot } from "./gateway.js";
+import "dotenv/config";
+  import app from "./app.js";
+  import { runMigrations, getEscalatableTickets, setTicketEscalated, getGuild } from "./db.js";
+  import { getClient } from "./gateway.js";
+  import { sendMessage } from "./discord.js";
 
-if (!process.env.DISCORD_TOKEN) {
-  console.error("❌ FEHLER: DISCORD_TOKEN ist nicht gesetzt!"); process.exit(1);
-}
-if (!process.env.DISCORD_PUBLIC_KEY) {
-  console.error("❌ FEHLER: DISCORD_PUBLIC_KEY ist nicht gesetzt!"); process.exit(1);
-}
+  const PORT = process.env.PORT || 8080;
 
-const port = Number(process.env.PORT || 8080);
-
-try {
   runMigrations();
-  app.listen(port, () => {
-    console.log(`🚀 Resolvo Tool läuft auf Port ${port}`);
-    console.log(`📁 Daten gespeichert in: /app/data/resolvo.db`);
+
+  // Escalation Cron - check every 5 minutes
+  setInterval(async () => {
+    try {
+      const tickets = getEscalatableTickets(24);
+      for (const ticket of tickets) {
+        const guild = getGuild(ticket.guild_id);
+        if (!guild) continue;
+        
+        setTicketEscalated(ticket.id);
+        
+        try {
+          await sendMessage(ticket.channel_id, 
+            `[AUTO-ESCALATION] Dieses Ticket ist seit ueber 24 Stunden offen und wurde automatisch eskaliert. Bitte ein Support-Mitglied uebernehmen.`
+          );
+          console.log(`[Escalation] Ticket #${ticket.id} escalated`);
+        } catch (err) {
+          console.error(`[Escalation] Failed to notify ticket #${ticket.id}:`, err.message);
+        }
+      }
+    } catch (err) {
+      console.error("[Escalation Cron] Error:", err);
+    }
+  }, 5 * 60 * 1000);
+
+  const server = app.listen(PORT, () => {
+    console.log(`[Server] Running on port ${PORT}`);
   });
 
-  // Starte Gateway-Bot für sichtbaren Online-Status und Presence
-  startGatewayBot();
-} catch (err) {
-  console.error("❌ Startfehler:", err.message);
-  process.exit(1);
-}
-
-process.on("SIGTERM", async () => {
-  console.log("🛑 SIGTERM empfangen – Gateway trennen...");
-  await stopGatewayBot();
-  process.exit(0);
-});
-
-process.on("SIGINT", async () => {
-  console.log("🛑 SIGINT empfangen – Gateway trennen...");
-  await stopGatewayBot();
-  process.exit(0);
-});
+  // Graceful shutdown
+  process.on("SIGTERM", () => {
+    console.log("[Server] SIGTERM received, shutting down...");
+    server.close(() => process.exit(0));
+  });
+  
