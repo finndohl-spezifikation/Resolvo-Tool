@@ -1,322 +1,572 @@
-import { Client, GatewayIntentBits, ActivityType, Events, REST, Routes, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
-  import {
-    createChannel, deleteChannel, sendMessage,
-    ticketEmbed, closeButton, ratingButtons, openTicketButton,
-  } from "./discord.js";
-  import {
-    upsertGuild, upsertUser, getGuild,
-    getOpenTicketByUser, createTicket, getTicketByChannel, closeTicket,
-    addRating, getTickets,
-  } from "./db.js";
+import {
+  Client, GatewayIntentBits, ActivityType, Events,
+  REST, Routes,
+  SlashCommandBuilder, PermissionFlagsBits,
+  ActionRowBuilder, ButtonBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder,
+  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  ChannelType, ButtonStyle,
+} from "discord.js";
+import {
+  createChannel, deleteChannel, sendMessage,
+  ticketEmbed, panelEmbed, setupEmbed, closeButton, ratingButtons,
+  openTicketButton, colorButtons, colorMap,
+} from "./discord.js";
+import {
+  upsertGuild, upsertUser, getGuild, getPanelConfig,
+  setPanelChannel, setTicketCategory, setTranscriptChannel,
+  setSupportRole, setPanelAppearance,
+  getOpenTicketByUser, createTicket, getTicketByChannel, closeTicket,
+  addRating, getTickets,
+} from "./db.js";
 
-  let client = null;
+let client = null;
 
-  export function getClient() {
-    return client;
+export function getClient() {
+  return client;
+}
+
+// ── Commands ───────────────────────────────────────────────────────────────────
+
+export const commands = [
+  new SlashCommandBuilder()
+    .setName("panel")
+    .setDescription("Konfiguriere das Ticket-Panel f\u00fcr diesen Server")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+  new SlashCommandBuilder()
+    .setName("setup")
+    .setDescription("Zeigt den Setup-Status von Resolvo Tool"),
+  new SlashCommandBuilder()
+    .setName("stats")
+    .setDescription("Zeigt die Ticket-Statistiken dieses Servers"),
+  new SlashCommandBuilder()
+    .setName("premium")
+    .setDescription("Informationen und Kauf von Resolvo Tool Premium"),
+];
+
+// ── Gateway Startup ────────────────────────────────────────────────────────────────
+
+export async function startGatewayBot() {
+  const token = process.env.DISCORD_TOKEN;
+  if (!token) {
+    console.warn("DISCORD_TOKEN nicht gesetzt \u2013 Gateway-Bot wird nicht gestartet.");
+    return;
   }
 
-  export const commands = [
-    new SlashCommandBuilder()
-      .setName("ticket")
-      .setDescription("Ticket-System verwalten")
-      .addSubcommand(sub =>
-        sub.setName("create").setDescription("Erstelle ein neues Support-Ticket"))
-      .addSubcommand(sub =>
-        sub.setName("close").setDescription("Schließe das aktuelle Ticket"))
-      .addSubcommand(sub =>
-        sub.setName("add")
-          .setDescription("Füge einen Nutzer zum Ticket hinzu")
-          .addUserOption(opt =>
-            opt.setName("user").setDescription("Der Nutzer").setRequired(true)))
-      .addSubcommand(sub =>
-        sub.setName("remove")
-          .setDescription("Entferne einen Nutzer aus dem Ticket")
-          .addUserOption(opt =>
-            opt.setName("user").setDescription("Der Nutzer").setRequired(true))),
-    new SlashCommandBuilder()
-      .setName("panel")
-      .setDescription("Erstelle ein Ticket-Panel in diesem Kanal")
-      .addStringOption(opt =>
-        opt.setName("title").setDescription("Titel des Panels").setRequired(false))
-      .addStringOption(opt =>
-        opt.setName("description").setDescription("Beschreibung des Panels").setRequired(false))
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
-    new SlashCommandBuilder()
-      .setName("setup")
-      .setDescription("Zeigt den Setup-Status von Resolvo Tool"),
-    new SlashCommandBuilder()
-      .setName("stats")
-      .setDescription("Zeigt die Ticket-Statistiken dieses Servers"),
-    new SlashCommandBuilder()
-      .setName("premium")
-      .setDescription("Informationen und Kauf von Resolvo Tool Premium"),
-  ];
+  client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
 
-  export async function startGatewayBot() {
-    const token = process.env.DISCORD_TOKEN;
-    if (!token) {
-      console.warn("DISCORD_TOKEN nicht gesetzt – Gateway-Bot wird nicht gestartet.");
-      return;
-    }
+  client.once(Events.ClientReady, async () => {
+    console.log(`Gateway verbunden als ${client.user.tag}`);
+    await registerCommands();
+  });
 
-    client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-      ],
-    });
-
-    client.once(Events.ClientReady, async () => {
-      console.log(`Gateway verbunden als ${client.user.tag}`);
-      await registerCommands();
-    });
-
-    client.on(Events.InteractionCreate, async (interaction) => {
-      try {
-        if (interaction.isChatInputCommand()) {
-          await handleSlashCommand(interaction);
-        } else if (interaction.isButton()) {
-          await handleButton(interaction);
-        }
-      } catch (err) {
-        console.error("Fehler bei Interaction:", err);
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ content: "Fehler aufgetreten.", flags: 64 }).catch(() => {});
-        } else {
-          await interaction.reply({ content: "Fehler aufgetreten.", flags: 64 }).catch(() => {});
-        }
-      }
-    });
-
-    client.on(Events.Error, (err) => {
-      console.error("Gateway Fehler:", err.message);
-    });
-
+  client.on(Events.InteractionCreate, async (interaction) => {
     try {
-      await client.login(token);
-      await client.user.setPresence({
-        status: "online",
-        activities: [{ name: "/ticket | Resolvo Tool", type: ActivityType.Playing }],
-      });
+      if (interaction.isChatInputCommand()) {
+        await handleSlashCommand(interaction);
+      } else if (interaction.isButton()) {
+        await handleButton(interaction);
+      } else if (interaction.isChannelSelectMenu()) {
+        await handleChannelSelect(interaction);
+      } else if (interaction.isRoleSelectMenu()) {
+        await handleRoleSelect(interaction);
+      } else if (interaction.isStringSelectMenu()) {
+        await handleStringSelect(interaction);
+      } else if (interaction.isModalSubmit()) {
+        await handleModalSubmit(interaction);
+      }
     } catch (err) {
-      console.error("Gateway Login fehlgeschlagen:", err.message);
+      console.error("Interaction Fehler:", err);
+      const msg = { content: "Fehler aufgetreten.", flags: 64 };
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(msg).catch(() => {});
+      } else {
+        await interaction.reply(msg).catch(() => {});
+      }
     }
+  });
+
+  client.on(Events.Error, (err) => {
+    console.error("Gateway Fehler:", err.message);
+  });
+
+  try {
+    await client.login(token);
+    await client.user.setPresence({
+      status: "online",
+      activities: [{ name: "/panel | Resolvo Tool", type: ActivityType.Playing }],
+    });
+  } catch (err) {
+    console.error("Gateway Login fehlgeschlagen:", err.message);
   }
+}
 
-  async function registerCommands() {
-    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-    try {
-      console.log("Registriere Slash-Commands...");
-      await rest.put(
-        Routes.applicationCommands(client.user.id),
-        { body: commands.map(c => c.toJSON()) },
-      );
-      console.log(`${commands.length} Slash-Commands registriert.`);
-    } catch (err) {
-      console.error("Fehler beim Registrieren der Commands:", err.message);
-    }
+async function registerCommands() {
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  try {
+    console.log("Registriere Slash-Commands...");
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands.map(c => c.toJSON()) },
+    );
+    console.log(`${commands.length} Slash-Commands registriert.`);
+  } catch (err) {
+    console.error("Fehler beim Registrieren:", err.message);
   }
+}
 
-  async function handleSlashCommand(interaction) {
-    const { commandName } = interaction;
-    const guildId = interaction.guildId;
-    const userId = interaction.user.id;
-    const username = interaction.user.username;
+// ── Slash Commands ─────────────────────────────────────────────────────────────────
 
-    upsertGuild(guildId, interaction.guild?.name || "Unbekannt");
-    upsertUser(userId, username);
+async function handleSlashCommand(interaction) {
+  const { commandName } = interaction;
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
 
-    switch (commandName) {
-      case "ticket": {
-        const sub = interaction.options.getSubcommand();
-        if (sub === "create") {
-          await handleCreateTicket(interaction, guildId, userId, username);
-        } else if (sub === "close") {
-          await handleCloseTicket(interaction, guildId, userId);
-        } else if (sub === "add") {
-          const target = interaction.options.getUser("user");
-          await interaction.reply({ content: `${target} wurde zum Ticket hinzugefügt.`, flags: 64 });
-        } else if (sub === "remove") {
-          const target = interaction.options.getUser("user");
-          await interaction.reply({ content: `${target} wurde aus dem Ticket entfernt.`, flags: 64 });
-        }
-        break;
-      }
+  upsertGuild(guildId, interaction.guild?.name || "Unbekannt");
+  upsertUser(userId, interaction.user.username);
 
-      case "panel": {
-        const title = interaction.options.getString("title") || "🎫 Support";
-        const description = interaction.options.getString("description") || "Klicke auf den Button um ein Ticket zu erstellen.";
-        await interaction.reply({
-          embeds: [{ title, description, color: 0x5865f2, footer: { text: "Resolvo Tool • Support System" } }],
-          components: openTicketButton(),
-        });
-        break;
-      }
-
-      case "setup": {
-        const guild = getGuild(guildId);
-        await interaction.reply({
-          embeds: [{
-            title: "⚙ï¸ Resolvo Tool Setup",
-            description: `Server **${guild?.name || "Unbekannt"}** ist eingerichtet!\n\nVerwende `/panel` um ein Ticket-Panel zu erstellen.`,
-            color: 0x57f287,
-            fields: [
-              { name: "Premium", value: guild?.is_premium ? "Aktiv" : "Inaktiv", inline: true },
-              { name: "Tickets", value: "Bereit", inline: true },
-            ],
-            footer: { text: "Resolvo Tool" },
-          }],
-          flags: 64,
-        });
-        break;
-      }
-
-      case "stats": {
-        const open = getTickets(guildId, "open");
-        const closed = getTickets(guildId, "closed");
-        await interaction.reply({
-          embeds: [{
-            title: "📊 Server Statistiken",
-            color: 0x5865f2,
-            fields: [
-              { name: "🟢 Offene Tickets", value: String(open.length), inline: true },
-              { name: "🔒 Geschlossene Tickets", value: String(closed.length), inline: true },
-              { name: "📈 Gesamt", value: String(open.length + closed.length), inline: true },
-            ],
-            footer: { text: "Resolvo Tool • Live Stats" },
-            timestamp: new Date().toISOString(),
-          }],
-        });
-        break;
-      }
-
-      case "premium": {
-        const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
-        const checkoutUrl = `${baseUrl}/api/premium/checkout?user=${userId}&guild=${guildId}`;
-        await interaction.reply({
-          embeds: [{
-            title: "⭐ Resolvo Tool Premium",
-            description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n• 📊 Erweiterte Statistiken\n• 🏷️ Unbegrenzte Ticket-Kategorien\n• 🏆 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99€** — dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
-            color: 0xffd700,
-            footer: { text: "Resolvo Tool Premium" },
-          }],
-          flags: 64,
-        });
-        break;
-      }
-
-      default:
-        await interaction.reply({ content: "Unbekannter Befehl.", flags: 64 });
-    }
-  }
-
-  async function handleButton(interaction) {
-    const customId = interaction.customId;
-    const guildId = interaction.guildId;
-    const userId = interaction.user.id;
-    const username = interaction.user.username;
-    const channelId = interaction.channelId;
-
-    upsertUser(userId, username);
-
-    if (customId === "create_ticket") {
-      await handleCreateTicket(interaction, guildId, userId, username);
-      return;
-    }
-
-    if (customId === "close_ticket") {
-      await handleCloseTicket(interaction, guildId, userId);
-      return;
-    }
-
-    if (customId === "rate_ticket") {
+  switch (commandName) {
+    case "panel": {
+      const config = getPanelConfig(guildId);
+      const guild = getGuild(guildId);
       await interaction.reply({
-        content: "⭐ Wie würdest du den Support bewerten?",
-        components: ratingButtons(),
+        embeds: [setupEmbed(config, guild)],
+        components: setupButtons(),
         flags: 64,
       });
-      return;
+      break;
     }
 
-    if (customId.startsWith("rate_")) {
-      const rating = parseInt(customId.split("_")[1]);
-      const ticket = getTicketByChannel(channelId);
-      if (ticket) addRating(ticket.id, rating, null);
-      await interaction.reply({ content: `Danke für deine Bewertung von **${rating}/5** ⭐`, flags: 64 });
-      return;
+    case "setup": {
+      const config = getPanelConfig(guildId);
+      const guild = getGuild(guildId);
+      const isSetup = config?.panel_channel_id && config?.ticket_category_id;
+      await interaction.reply({
+        embeds: [{
+          title: "\u2699\ufe0f Resolvo Tool Setup",
+          description: isSetup
+            ? `Server **${guild?.name || "Unbekannt"}** ist vollst\u00e4ndig eingerichtet!\n\nVerwende \`/panel\` um die Konfiguration anzupassen.`
+            : `Server **${guild?.name || "Unbekannt"}** ist teilweise eingerichtet.\n\nVerwende \`/panel\` um die Einrichtung abzuschlie\u00dfen.`,
+          color: isSetup ? 0x57f287 : 0xfaa61a,
+          fields: [
+            { name: "Premium", value: guild?.is_premium ? "Aktiv" : "Inaktiv", inline: true },
+            { name: "Panel", value: config?.panel_channel_id ? "Konfiguriert" : "Nicht gesetzt", inline: true },
+            { name: "Kategorie", value: config?.ticket_category_id ? "Gesetzt" : "Nicht gesetzt", inline: true },
+          ],
+          footer: { text: "Resolvo Tool" },
+        }],
+        flags: 64,
+      });
+      break;
     }
 
-    await interaction.reply({ content: "Unbekannte Aktion.", flags: 64 });
+    case "stats": {
+      const open = getTickets(guildId, "open");
+      const closed = getTickets(guildId, "closed");
+      await interaction.reply({
+        embeds: [{
+          title: "\ud83d\udcca Server Statistiken",
+          color: 0x5865f2,
+          fields: [
+            { name: "\ud83d\udfe2 Offene Tickets", value: String(open.length), inline: true },
+            { name: "\ud83d\udd12 Geschlossene Tickets", value: String(closed.length), inline: true },
+            { name: "\ud83d\udcc8 Gesamt", value: String(open.length + closed.length), inline: true },
+          ],
+          footer: { text: "Resolvo Tool \u2022 Live Stats" },
+          timestamp: new Date().toISOString(),
+        }],
+      });
+      break;
+    }
+
+    case "premium": {
+      const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
+      const checkoutUrl = `${baseUrl}/api/premium/checkout?user=${userId}&guild=${guildId}`;
+      await interaction.reply({
+        embeds: [{
+          title: "\u2b50 Resolvo Tool Premium",
+          description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n\u2022 \ud83d\udcca Erweiterte Statistiken\n\u2022 \ud83c\udff7\ufe0f Unbegrenzte Ticket-Kategorien\n\u2022 \ud83c\udfc6 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99\u20ac** \u2014 dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
+          color: 0xffd700,
+          footer: { text: "Resolvo Tool Premium" },
+        }],
+        flags: 64,
+      });
+      break;
+    }
+  }
+}
+
+// ── Button Handler (Setup Wizard) ───────────────────────────────────────────────────
+
+async function handleButton(interaction) {
+  const customId = interaction.customId;
+  const guildId = interaction.guildId;
+
+  // Panel Setup Buttons
+  if (customId === "cfg_panel_ch") {
+    const row = new ActionRowBuilder().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId("sel_panel_ch")
+        .setPlaceholder("W\u00e4hle einen Text-Kanal f\u00fcr das Panel")
+        .setChannelTypes(ChannelType.GuildText)
+        .setMaxValues(1),
+    );
+    await interaction.reply({ content: "W\u00e4hle den Kanal f\u00fcr das Ticket-Panel:", components: [row], flags: 64 });
+    return;
   }
 
-  async function handleCreateTicket(interaction, guildId, userId, username) {
-    upsertGuild(guildId, interaction.guild?.name || "Server");
-
-    const existing = getOpenTicketByUser(guildId, userId);
-    if (existing) {
-      const reply = { content: `Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`, flags: 64 };
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(reply);
-      } else {
-        await interaction.reply(reply);
-      }
-      return;
-    }
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: "Erstelle dein Ticket...", flags: 64 });
-    }
-
-    try {
-      const channel = await createChannel(guildId, `ticket-${username.toLowerCase().replace(/[^a-z0-9]/g, "")}`, undefined, [
-        { id: guildId, deny: ["1024"] },
-        { id: userId, allow: ["1024", "2048", "65536"] },
-      ]);
-
-      const ticket = createTicket(guildId, userId, channel.id);
-      await sendMessage(channel.id, `<@${userId}>`, closeButton(), [ticketEmbed(ticket.id, userId)]);
-      console.log(`Ticket #${ticket.id} erstellt für ${userId}`);
-    } catch (err) {
-      console.error("Fehler beim Erstellen des Ticket-Kanals:", err);
-    }
+  if (customId === "cfg_cat") {
+    const row = new ActionRowBuilder().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId("sel_cat")
+        .setPlaceholder("W\u00e4hle eine Kategorie f\u00fcr Tickets")
+        .setChannelTypes(ChannelType.GuildCategory)
+        .setMaxValues(1),
+    );
+    await interaction.reply({ content: "W\u00e4hle die Kategorie, in der Tickets erstellt werden:", components: [row], flags: 64 });
+    return;
   }
 
-  async function handleCloseTicket(interaction, guildId, userId) {
-    const channelId = interaction.channelId;
-    const ticket = getTicketByChannel(channelId);
+  if (customId === "cfg_transcript") {
+    const row = new ActionRowBuilder().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId("sel_transcript")
+        .setPlaceholder("W\u00e4hle einen Kanal f\u00fcr Transkripte")
+        .setChannelTypes(ChannelType.GuildText)
+        .setMaxValues(1),
+    );
+    await interaction.reply({ content: "W\u00e4hle den Kanal f\u00fcr Ticket-Transkripte:", components: [row], flags: 64 });
+    return;
+  }
 
-    if (!ticket) {
-      await interaction.reply({ content: "Kein Ticket in diesem Kanal gefunden.", flags: 64 });
+  if (customId === "cfg_role") {
+    const row = new ActionRowBuilder().addComponents(
+      new RoleSelectMenuBuilder()
+        .setCustomId("sel_role")
+        .setPlaceholder("W\u00e4hle die Support-Rolle")
+        .setMaxValues(1),
+    );
+    await interaction.reply({ content: "W\u00e4hle die Rolle, die Tickets bearbeiten darf:", components: [row], flags: 64 });
+    return;
+  }
+
+  if (customId === "cfg_btn_text") {
+    const modal = new ModalBuilder()
+      .setCustomId("modal_btn_text")
+      .setTitle("Button-Text festlegen");
+    const input = new TextInputBuilder()
+      .setCustomId("btn_text_input")
+      .setLabel("Text auf dem Ticket-Button")
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder("z.B. \u00d6ffne ein Ticket")
+      .setMaxLength(80)
+      .setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (customId === "cfg_btn_color") {
+    await interaction.reply({ content: "W\u00e4hle die Button-Farbe:", components: colorButtons(), flags: 64 });
+    return;
+  }
+
+  if (customId === "cfg_embed_color") {
+    await interaction.reply({ content: "W\u00e4hle die Embed-Farbe:", components: colorButtons(), flags: 64 });
+    return;
+  }
+
+  // Color picker buttons
+  if (customId.startsWith("color_")) {
+    const color = colorMap[customId];
+    if (!color) return;
+
+    // Determine if this was for button or embed color
+    // We can check the message content
+    const msgContent = interaction.message?.content || "";
+    const isEmbedColor = msgContent.includes("Embed");
+
+    if (isEmbedColor) {
+      setPanelAppearance(guildId, { embedColor: color.value });
+      await interaction.reply({ content: `Embed-Farbe auf **${color.name}** gesetzt.`, flags: 64 });
+    } else {
+      setPanelAppearance(guildId, { buttonColor: color.style });
+      await interaction.reply({ content: `Button-Farbe auf **${color.name}** gesetzt.`, flags: 64 });
+    }
+    await refreshSetupMessage(interaction);
+    return;
+  }
+
+  if (customId === "cfg_publish") {
+    await publishPanel(interaction, guildId);
+    return;
+  }
+
+  if (customId === "cfg_cancel") {
+    await interaction.update({ content: "Setup abgebrochen.", embeds: [], components: [] });
+    return;
+  }
+
+  // Ticket Buttons
+  if (customId === "create_ticket") {
+    await handleCreateTicket(interaction, guildId, interaction.user.id, interaction.user.username);
+    return;
+  }
+
+  if (customId === "close_ticket") {
+    await handleCloseTicket(interaction, guildId, interaction.user.id);
+    return;
+  }
+
+  if (customId === "rate_ticket") {
+    await interaction.reply({ content: "\u2b50 Wie w\u00fcrdest du den Support bewerten?", components: ratingButtons(), flags: 64 });
+    return;
+  }
+
+  if (customId.startsWith("rate_")) {
+    const rating = parseInt(customId.split("_")[1]);
+    const ticket = getTicketByChannel(interaction.channelId);
+    if (ticket) addRating(ticket.id, rating, null);
+    await interaction.reply({ content: `Danke f\u00fcr deine Bewertung von **${rating}/5** \u2b50`, flags: 64 });
+    return;
+  }
+}
+
+// ── Select Menu Handlers ──────────────────────────────────────────────────────────
+
+async function handleChannelSelect(interaction) {
+  const customId = interaction.customId;
+  const guildId = interaction.guildId;
+  const value = interaction.values[0];
+
+  if (customId === "sel_panel_ch") {
+    setPanelChannel(guildId, value);
+    await interaction.reply({ content: `Panel-Channel auf <#${value}> gesetzt.`, flags: 64 });
+  } else if (customId === "sel_cat") {
+    setTicketCategory(guildId, value);
+    await interaction.reply({ content: `Ticket-Kategorie auf <#${value}> gesetzt.`, flags: 64 });
+  } else if (customId === "sel_transcript") {
+    setTranscriptChannel(guildId, value);
+    await interaction.reply({ content: `Transkript-Channel auf <#${value}> gesetzt.`, flags: 64 });
+  }
+
+  await refreshSetupMessage(interaction);
+}
+
+async function handleRoleSelect(interaction) {
+  const guildId = interaction.guildId;
+  const value = interaction.values[0];
+
+  setSupportRole(guildId, value);
+  await interaction.reply({ content: `Support-Rolle auf <@&${value}> gesetzt.`, flags: 64 });
+  await refreshSetupMessage(interaction);
+}
+
+async function handleStringSelect(interaction) {
+  // Reserved for future string selects
+  await interaction.reply({ content: "Auswahl gespeichert.", flags: 64 });
+}
+
+// ── Modal Handlers ────────────────────────────────────────────────────────────────────
+
+async function handleModalSubmit(interaction) {
+  const customId = interaction.customId;
+  const guildId = interaction.guildId;
+
+  if (customId === "modal_btn_text") {
+    const text = interaction.fields.getTextInputValue("btn_text_input");
+    setPanelAppearance(guildId, { buttonText: text });
+    await interaction.reply({ content: `Button-Text auf "${text}" gesetzt.`, flags: 64 });
+    await refreshSetupMessage(interaction);
+  }
+}
+
+// ── Setup UI Helpers ────────────────────────────────────────────────────────
+
+async function refreshSetupMessage(interaction) {
+  try {
+    const guildId = interaction.guildId;
+    const config = getPanelConfig(guildId);
+    const guild = getGuild(guildId);
+
+    // Try to update the original panel setup message
+    const original = await interaction.channel.messages.fetch({ limit: 10 });
+    const setupMsg = original.find(m =>
+      m.author.id === client.user.id &&
+      m.embeds?.[0]?.title?.includes("Panel-Konfiguration")
+    );
+
+    if (setupMsg) {
+      await setupMsg.edit({ embeds: [setupEmbed(config, guild)], components: setupButtons() });
+    }
+  } catch (e) {
+    // Silently fail if we can't find the setup message
+  }
+}
+
+async function publishPanel(interaction, guildId) {
+  const config = getPanelConfig(guildId);
+
+  if (!config?.panel_channel_id) {
+    await interaction.reply({ content: "Fehler: Kein Panel-Channel konfiguriert. W\u00e4hle zuerst einen Kanal aus.", flags: 64 });
+    return;
+  }
+  if (!config?.ticket_category_id) {
+    await interaction.reply({ content: "Fehler: Keine Ticket-Kategorie konfiguriert. W\u00e4hle zuerst eine Kategorie aus.", flags: 64 });
+    return;
+  }
+
+  try {
+    const channel = await client.channels.fetch(config.panel_channel_id);
+    if (!channel) {
+      await interaction.reply({ content: "Fehler: Der konfigurierte Panel-Channel existiert nicht mehr.", flags: 64 });
       return;
     }
-    if (ticket.status === "closed") {
-      await interaction.reply({ content: "Dieses Ticket ist bereits geschlossen.", flags: 64 });
-      return;
-    }
 
-    closeTicket(ticket.id);
-
-    await interaction.reply({
-      embeds: [{
-        title: "🔒 Ticket geschlossen",
-        description: `Ticket #${ticket.id} wurde von <@${userId}> geschlossen.\n\nDer Kanal wird in **5 Sekunden** gelöscht.`,
-        color: 0xed4245,
-        footer: { text: "Resolvo Tool" },
-        timestamp: new Date().toISOString(),
-      }],
+    await channel.send({
+      embeds: [panelEmbed(config)],
+      components: openTicketButton(config),
     });
 
-    setTimeout(async () => {
-      try { await deleteChannel(channelId); } catch (err) { console.error("Kanal löschen fehlgeschlagen:", err); }
-    }, 5000);
+    await interaction.reply({ content: `\u2705 Panel wurde in <#${config.panel_channel_id}> ver\u00f6ffentlicht!`, flags: 64 });
+  } catch (err) {
+    console.error("Panel ver\u00f6ffentlichen fehlgeschlagen:", err);
+    await interaction.reply({ content: `Fehler beim Ver\u00f6ffentlichen: ${err.message}`, flags: 64 });
+  }
+}
+
+function setupButtons() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("cfg_panel_ch").setLabel("Panel-Channel").setEmoji("📌").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_cat").setLabel("Kategorie").setEmoji("📁").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_transcript").setLabel("Transkript").setEmoji("📋").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_role").setLabel("Support-Rolle").setEmoji("👥").setStyle(ButtonStyle.Primary),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("cfg_btn_text").setLabel("Button-Text").setEmoji("✏️").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_btn_color").setLabel("Button-Farbe").setEmoji("🎨").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_embed_color").setLabel("Embed-Farbe").setEmoji("🎨").setStyle(ButtonStyle.Secondary),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("cfg_publish").setLabel("Panel ver\u00f6ffentlichen").setEmoji("🚀").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("cfg_cancel").setLabel("Abbrechen").setEmoji("❌").setStyle(ButtonStyle.Danger),
+    ),
+  ];
+}
+
+// ── Ticket Logic ───────────────────────────────────────────────────────────────────
+
+async function handleCreateTicket(interaction, guildId, userId, username) {
+  upsertGuild(guildId, interaction.guild?.name || "Server");
+
+  const config = getPanelConfig(guildId);
+  const existing = getOpenTicketByUser(guildId, userId);
+  if (existing) {
+    await interaction.reply({ content: `Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`, flags: 64 });
+    return;
   }
 
-  export async function stopGatewayBot() {
-    if (client) {
-      await client.destroy();
-      client = null;
-      console.log("Gateway getrennt");
+  await interaction.reply({ content: "Erstelle dein Ticket...", flags: 64 });
+
+  try {
+    const perms = [
+      { id: guildId, deny: ["1024"] },
+      { id: userId, allow: ["1024", "2048", "65536"] },
+    ];
+
+    if (config?.support_role_id) {
+      perms.push({ id: config.support_role_id, allow: ["1024", "2048", "65536", "16"] });
+    }
+
+    const channel = await createChannel(
+      guildId,
+      `ticket-${username.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+      config?.ticket_category_id || undefined,
+      perms,
+    );
+
+    const ticket = createTicket(guildId, userId, channel.id);
+    await sendMessage(channel.id, `<@${userId}>`, closeButton(), [ticketEmbed(ticket.id, userId, config)]);
+    console.log(`Ticket #${ticket.id} erstellt f\u00fcr ${userId}`);
+  } catch (err) {
+    console.error("Fehler beim Erstellen des Ticket-Kanals:", err);
+  }
+}
+
+async function handleCloseTicket(interaction, guildId, userId) {
+  const channelId = interaction.channelId;
+  const ticket = getTicketByChannel(channelId);
+
+  if (!ticket) {
+    await interaction.reply({ content: "Kein Ticket in diesem Kanal gefunden.", flags: 64 });
+    return;
+  }
+  if (ticket.status === "closed") {
+    await interaction.reply({ content: "Dieses Ticket ist bereits geschlossen.", flags: 64 });
+    return;
+  }
+
+  // Generate transcript
+  const messages = getMessages(ticket.id);
+  const transcriptText = messages.map(m =>
+    `[${new Date(m.created_at).toLocaleString("de-DE")}] ${m.author_name}: ${m.content}`
+  ).join("\n");
+
+  const config = getPanelConfig(guildId);
+
+  // Send transcript if configured
+  if (config?.transcript_channel_id && transcriptText) {
+    try {
+      await sendMessage(
+        config.transcript_channel_id,
+        `\ud83d\udccb **Transkript** \u2014 Ticket #${ticket.id} von <@${ticket.user_id}>`,
+        [],
+        [{
+          title: `Ticket #${ticket.id} \u2014 Transkript`,
+          description: transcriptText.length > 4000
+            ? transcriptText.substring(0, 4000) + "\n\n... (gek\u00fcrzt)"
+            : transcriptText || "Keine Nachrichten.",
+          color: config?.embed_color ?? 3447003,
+          fields: [
+            { name: "Erstellt von", value: `<@${ticket.user_id}>`, inline: true },
+            { name: "Geschlossen von", value: `<@${userId}>`, inline: true },
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: "Resolvo Tool \u2022 Transkript" },
+        }],
+      );
+    } catch (e) {
+      console.error("Transkript senden fehlgeschlagen:", e.message);
     }
   }
-  
+
+  closeTicket(ticket.id, transcriptText);
+
+  await interaction.reply({
+    embeds: [{
+      title: "\ud83d\udd12 Ticket geschlossen",
+      description: `Ticket #${ticket.id} wurde von <@${userId}> geschlossen.\n\nDer Kanal wird in **5 Sekunden** gel\u00f6scht.`,
+      color: 0xed4245,
+      footer: { text: "Resolvo Tool" },
+      timestamp: new Date().toISOString(),
+    }],
+  });
+
+  setTimeout(async () => {
+    try { await deleteChannel(channelId); } catch (err) { console.error("Kanal l\u00f6schen fehlgeschlagen:", err); }
+  }, 5000);
+}
+
+export async function stopGatewayBot() {
+  if (client) {
+    await client.destroy();
+    client = null;
+    console.log("Gateway getrennt");
+  }
+}
