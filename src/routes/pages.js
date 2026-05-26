@@ -120,7 +120,7 @@ function layout(title, content, { session = null, activeNav = "" } = {}) {
 // ── Homepage ───────────────────────────────────────────────────────────────────
 
 router.get("/", (req, res) => {
-  res.send(layout("Startseite`, `
+  res.send(layout("Startseite", `
     <div class="hero">
       <h1>Das modernste Ticket-System f\u00fcr Discord</h1>
       <p>Resolvo Tool verwaltet deine Support-Anfragen elegant. Mit interaktivem Panel, automatischen Transkripten und einem nahtlosen Premium-Erlebnis.</p>
