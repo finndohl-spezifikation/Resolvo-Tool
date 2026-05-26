@@ -1,7 +1,7 @@
 import { Router } from "express";
   import { getSession } from "./auth.js";
   import { getClient } from "../gateway.js";
-  import { getPanelConfig, getStats, upsertPanelConfig } from "../db.js";
+  import { getPanelConfig, getStats, upsertPanelConfig, getGuild } from "../db.js";
 
   const router = Router();
 
