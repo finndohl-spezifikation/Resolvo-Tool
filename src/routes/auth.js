@@ -3,7 +3,7 @@ import { Router } from "express";
 
   const router = Router();
 
-  const FALLBACK_CLIENT_ID = "1508500695110647839";
+  const FALLBACK_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "1508500695110647839";
 
   function getClientId() {
     return process.env.DISCORD_CLIENT_ID || FALLBACK_CLIENT_ID;
