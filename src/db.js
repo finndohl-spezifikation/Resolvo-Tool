@@ -30,13 +30,19 @@ export function runMigrations() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS ticket_categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
-      name TEXT NOT NULL,
-      description TEXT,
-      emoji TEXT DEFAULT '🎫',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    CREATE TABLE IF NOT EXISTS panel_configs (
+      guild_id TEXT PRIMARY KEY REFERENCES guilds(id) ON DELETE CASCADE,
+      panel_channel_id TEXT,
+      ticket_category_id TEXT,
+      transcript_channel_id TEXT,
+      support_role_id TEXT,
+      button_color INTEGER DEFAULT 1,
+      button_text TEXT DEFAULT '\ud83c\udfab Ticket erstellen',
+      embed_color INTEGER DEFAULT 3447003,
+      embed_title TEXT DEFAULT 'Support',
+      embed_description TEXT DEFAULT 'Klicke auf den Button um ein Ticket zu erstellen.',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS tickets (
@@ -50,6 +56,7 @@ export function runMigrations() {
       subject TEXT,
       sentiment_score REAL,
       closed_at TEXT,
+      transcript TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -74,7 +81,7 @@ export function runMigrations() {
   console.log("✅ Datenbank bereit:", "/app/data/resolvo.db");
 }
 
-// ── Guilds ────────────────────────────────────────────────────────────────────
+// ── Guilds ──────────────────────────────────────────────────────────────────
 
 export function upsertGuild(id, name) {
   db.prepare(`
@@ -94,7 +101,7 @@ export function setGuildPremium(id, userId) {
   `).run(userId, id);
 }
 
-// ── Users ─────────────────────────────────────────────────────────────────────
+// ── Users ────────────────────────────────────────────────────────────────────
 
 export function upsertUser(id, username) {
   db.prepare(`
@@ -108,6 +115,54 @@ export function setUserPremium(id) {
     UPDATE users SET is_premium = 1, premium_since = datetime('now'), updated_at = datetime('now')
     WHERE id = ?
   `).run(id);
+}
+
+// ── Panel Config ─────────────────────────────────────────────────────────────
+
+export function getPanelConfig(guildId) {
+  return db.prepare("SELECT * FROM panel_configs WHERE guild_id = ?").get(guildId);
+}
+
+export function upsertPanelConfig(guildId, fields) {
+  const cols = Object.keys(fields);
+  const placeholders = cols.map(() => "?").join(", ");
+  const colsStr = cols.join(", ");
+
+  const values = Object.values(fields);
+
+  db.prepare(`
+    INSERT INTO panel_configs (guild_id, ${colsStr}, updated_at)
+    VALUES (?, ${placeholders}, datetime('now'))
+    ON CONFLICT(guild_id) DO UPDATE SET
+      ${cols.map(c => `${c} = excluded.${c}`).join(", ")},
+      updated_at = datetime('now')
+  `).run(guildId, ...values);
+}
+
+export function setPanelChannel(guildId, channelId) {
+  upsertPanelConfig(guildId, { panel_channel_id: channelId });
+}
+
+export function setTicketCategory(guildId, categoryId) {
+  upsertPanelConfig(guildId, { ticket_category_id: categoryId });
+}
+
+export function setTranscriptChannel(guildId, channelId) {
+  upsertPanelConfig(guildId, { transcript_channel_id: channelId });
+}
+
+export function setSupportRole(guildId, roleId) {
+  upsertPanelConfig(guildId, { support_role_id: roleId });
+}
+
+export function setPanelAppearance(guildId, { buttonColor, buttonText, embedColor, embedTitle, embedDescription }) {
+  upsertPanelConfig(guildId, {
+    button_color: buttonColor,
+    button_text: buttonText,
+    embed_color: embedColor,
+    embed_title: embedTitle,
+    embed_description: embedDescription,
+  });
 }
 
 // ── Tickets ───────────────────────────────────────────────────────────────────
@@ -139,11 +194,11 @@ export function getTickets(guildId, status, limit = 50, offset = 0) {
   return db.prepare("SELECT * FROM tickets WHERE guild_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?").all(guildId, limit, offset);
 }
 
-export function closeTicket(id) {
+export function closeTicket(id, transcript = null) {
   db.prepare(`
-    UPDATE tickets SET status = 'closed', closed_at = datetime('now'), updated_at = datetime('now')
+    UPDATE tickets SET status = 'closed', closed_at = datetime('now'), transcript = ?, updated_at = datetime('now')
     WHERE id = ?
-  `).run(id);
+  `).run(transcript, id);
 }
 
 export function updateTicket(id, fields) {
@@ -171,7 +226,7 @@ export function getMessages(ticketId) {
   return db.prepare("SELECT * FROM ticket_messages WHERE ticket_id = ? ORDER BY created_at ASC").all(ticketId);
 }
 
-// ── Ratings ───────────────────────────────────────────────────────────────────
+// ── Ratings ────────────────────────────────────────────────────────────────────
 
 export function addRating(ticketId, rating, comment) {
   db.prepare("INSERT INTO staff_ratings (ticket_id, rating, comment) VALUES (?, ?, ?)").run(ticketId, rating, comment ?? null);
@@ -181,7 +236,7 @@ export function getRating(ticketId) {
   return db.prepare("SELECT * FROM staff_ratings WHERE ticket_id = ?").get(ticketId);
 }
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
+// ── Stats ──────────────────────────────────────────────────────────────────────
 
 export function getStats(guildId) {
   const open = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = 'open'").get(guildId).count;
