@@ -186,7 +186,8 @@ async function handleSlashCommand(interaction) {
 
     case "premium": {
       const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
-      const checkoutUrl = `${baseUrl}/api/premium/checkout?user=${userId}&guild=${guildId}`;
+      const checkoutUrl = `${baseUrl}/premium`;
+      // User will see instructions on the premium page to use /premium in their server
       await interaction.reply({
         embeds: [{
           title: "\u2b50 Resolvo Tool Premium",
