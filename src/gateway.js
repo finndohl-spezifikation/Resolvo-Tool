@@ -443,19 +443,19 @@ async function publishPanel(interaction, guildId) {
 function setupButtons() {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_panel_ch").setLabel("Panel-Channel").setEmoji("📌").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_cat").setLabel("Kategorie").setEmoji("📁").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_transcript").setLabel("Transkript").setEmoji("📋").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("cfg_role").setLabel("Support-Rolle").setEmoji("👥").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_panel_ch").setLabel("Panel-Channel").setEmoji({ name: "📌" }).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_cat").setLabel("Kategorie").setEmoji({ name: "📁" }).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_transcript").setLabel("Transkript").setEmoji({ name: "📋" }).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("cfg_role").setLabel("Support-Rolle").setEmoji({ name: "👥" }).setStyle(ButtonStyle.Primary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_btn_text").setLabel("Button-Text").setEmoji("✏️").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("cfg_btn_color").setLabel("Button-Farbe").setEmoji("🎨").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("cfg_embed_color").setLabel("Embed-Farbe").setEmoji("🎨").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_btn_text").setLabel("Button-Text").setEmoji({ name: "✏️" }).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_btn_color").setLabel("Button-Farbe").setEmoji({ name: "🎨" }).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("cfg_embed_color").setLabel("Embed-Farbe").setEmoji({ name: "🎨" }).setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("cfg_publish").setLabel("Panel ver\u00f6ffentlichen").setEmoji("🚀").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId("cfg_cancel").setLabel("Abbrechen").setEmoji("❌").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("cfg_publish").setLabel("Panel ver\u00f6ffentlichen").setEmoji({ name: "🚀" }).setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("cfg_cancel").setLabel("Abbrechen").setEmoji({ name: "❌" }).setStyle(ButtonStyle.Danger),
     ),
   ];
 }
