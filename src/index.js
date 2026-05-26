@@ -1,12 +1,15 @@
 import "dotenv/config";
   import app from "./app.js";
   import { runMigrations, getEscalatableTickets, setTicketEscalated, getGuild } from "./db.js";
-  import { getClient } from "./gateway.js";
+  import { getClient, startGatewayBot } from "./gateway.js";
   import { sendMessage } from "./discord.js";
 
   const PORT = process.env.PORT || 8080;
 
   runMigrations();
+
+  // Start Discord Gateway Bot (connects to Discord, listens for events, handles commands)
+  startGatewayBot().catch(err => console.error("[Gateway] Failed to start:", err.message));
 
   // Escalation Cron - check every 5 minutes
   setInterval(async () => {
