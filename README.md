@@ -4,9 +4,9 @@ Ein öffentlicher Discord-Ticket-Bot mit Live-Web-Dashboard.
 
 ## Features
 
-- 🎫 Slash-Commands: `/ticket`, `/panel`, `/setup`, `/stats`, `/premium`
-- 📊 Ticket-Management mit Prioritäten und Status
-- ⭐ Staff-Bewertungen (1–5 Sterne)
+- Slash-Commands: `/ticket`, `/panel`, `/setup`, `/stats`, `/premium`
+- Ticket-Management mit Prioritäten und Status
+- Staff-Bewertungen (1–5 Sterne)
 - 💜 Stimmungsanalyse bei Tickets
 - 📈 Öffentliche Server-Statistiken
 - 💳 Stripe-Premium für 5,99€ (einmalig, dauerhaft)
