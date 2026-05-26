@@ -36,11 +36,11 @@ router.post("/interactions", async (req, res) => {
     } else if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
       await handleComponent(interaction, res);
     } else {
-      res.json(ephemeralReply("❌ Unbekannter Interaktionstyp."));
+      res.json(ephemeralReply("Error: Unbekannter Interaktionstyp."));
     }
   } catch (err) {
     console.error("Fehler bei Interaction:", err);
-    res.json(ephemeralReply("❌ Ein Fehler ist aufgetreten. Bitte versuche es erneut."));
+    res.json(ephemeralReply("Error: Ein Fehler ist aufgetreten. Bitte versuche es erneut."));
   }
 });
 
@@ -62,18 +62,18 @@ async function handleCommand(interaction, res) {
         await handleCloseTicket(interaction, res, guildId, userId);
       } else if (sub === "add") {
         const targetId = interaction.data.options?.[0]?.options?.[0]?.value;
-        res.json(ephemeralReply(`✅ <@${targetId}> wurde zum Ticket hinzugefügt.`));
+        res.json(ephemeralReply(`OK: <@${targetId}> wurde zum Ticket hinzugefügt.`));
       } else if (sub === "remove") {
         const targetId = interaction.data.options?.[0]?.options?.[0]?.value;
-        res.json(ephemeralReply(`✅ <@${targetId}> wurde aus dem Ticket entfernt.`));
+        res.json(ephemeralReply(`OK: <@${targetId}> wurde aus dem Ticket entfernt.`));
       } else {
-        res.json(ephemeralReply("❌ Unbekannter Unterbefehl."));
+        res.json(ephemeralReply("Error: Unbekannter Unterbefehl."));
       }
       break;
     }
 
     case "panel": {
-      const title = interaction.data.options?.find(o => o.name === "title")?.value || "🎫 Support";
+      const title = interaction.data.options?.find(o => o.name === "title")?.value || " Support";
       const description = interaction.data.options?.find(o => o.name === "description")?.value || "Klicke auf den Button um ein Ticket zu erstellen.";
       res.json({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -88,11 +88,11 @@ async function handleCommand(interaction, res) {
     case "setup": {
       const guild = getGuild(guildId);
       res.json(embedReply({
-        title: "⚙️ Resolvo Tool Setup",
+        title: "[Config] Resolvo Tool Setup",
         description: `Server **${guild?.name || "Unbekannt"}** ist eingerichtet!\n\nVerwende \`/panel\` um ein Ticket-Panel zu erstellen.`,
         color: 0x57f287,
         fields: [
-          { name: "Premium", value: guild?.is_premium ? "✅ Aktiv" : "❌ Inaktiv", inline: true },
+          { name: "Premium", value: guild?.is_premium ? "OK: Aktiv" : "Error: Inaktiv", inline: true },
           { name: "Tickets", value: "Bereit", inline: true },
         ],
         footer: { text: "Resolvo Tool" },
@@ -104,7 +104,7 @@ async function handleCommand(interaction, res) {
       const open = getTickets(guildId, "open");
       const closed = getTickets(guildId, "closed");
       res.json(embedReply({
-        title: "📊 Server Statistiken",
+        title: " Server Statistiken",
         color: 0x5865f2,
         fields: [
           { name: "🟢 Offene Tickets", value: String(open.length), inline: true },
@@ -121,8 +121,8 @@ async function handleCommand(interaction, res) {
       const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
       const checkoutUrl = `${baseUrl}/api/premium/checkout?user=${userId}&guild=${guildId}`;
       res.json(embedReply({
-        title: "⭐ Resolvo Tool Premium",
-        description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n• 📊 Erweiterte Statistiken\n• 🏷️ Unbegrenzte Ticket-Kategorien\n• 🏆 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99€** — dauerhafter Zugang!\n\n[✨ Jetzt upgraden](${checkoutUrl})`,
+        title: "* Resolvo Tool Premium",
+        description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n•  Erweiterte Statistiken\n• 🏷️ Unbegrenzte Ticket-Kategorien\n• 🏆 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99€** — dauerhafter Zugang!\n\n[ Jetzt upgraden](${checkoutUrl})`,
         color: 0xffd700,
         footer: { text: "Resolvo Tool Premium" },
       }, true));
@@ -130,7 +130,7 @@ async function handleCommand(interaction, res) {
     }
 
     default:
-      res.json(ephemeralReply("❌ Unbekannter Befehl."));
+      res.json(ephemeralReply("Error: Unbekannter Befehl."));
   }
 }
 
@@ -156,7 +156,7 @@ async function handleComponent(interaction, res) {
   if (customId === "rate_ticket") {
     res.json({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: { content: "⭐ Wie würdest du den Support bewerten?", components: ratingButtons(), flags: 64 },
+      data: { content: "* Wie würdest du den Support bewerten?", components: ratingButtons(), flags: 64 },
     });
     return;
   }
@@ -165,11 +165,11 @@ async function handleComponent(interaction, res) {
     const rating = parseInt(customId.split("_")[1]);
     const ticket = getTicketByChannel(channelId);
     if (ticket) addRating(ticket.id, rating, null);
-    res.json(ephemeralReply(`✅ Danke für deine Bewertung von **${rating}/5** ⭐`));
+    res.json(ephemeralReply(`OK: Danke für deine Bewertung von **${rating}/5** *`));
     return;
   }
 
-  res.json(ephemeralReply("❌ Unbekannte Aktion."));
+  res.json(ephemeralReply("Error: Unbekannte Aktion."));
 }
 
 async function handleCreateTicket(interaction, res, guildId, userId, username) {
@@ -177,7 +177,7 @@ async function handleCreateTicket(interaction, res, guildId, userId, username) {
 
   const existing = getOpenTicketByUser(guildId, userId);
   if (existing) {
-    res.json(ephemeralReply(`❌ Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`));
+    res.json(ephemeralReply(`Error: Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`));
     return;
   }
 
@@ -201,8 +201,8 @@ async function handleCloseTicket(interaction, res, guildId, userId) {
   const channelId = interaction.channel_id;
   const ticket = getTicketByChannel(channelId);
 
-  if (!ticket) { res.json(ephemeralReply("❌ Kein Ticket in diesem Kanal gefunden.")); return; }
-  if (ticket.status === "closed") { res.json(ephemeralReply("❌ Dieses Ticket ist bereits geschlossen.")); return; }
+  if (!ticket) { res.json(ephemeralReply("Error: Kein Ticket in diesem Kanal gefunden.")); return; }
+  if (ticket.status === "closed") { res.json(ephemeralReply("Error: Dieses Ticket ist bereits geschlossen.")); return; }
 
   closeTicket(ticket.id);
 
