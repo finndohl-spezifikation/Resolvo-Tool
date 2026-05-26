@@ -36,6 +36,8 @@ import { Router } from "express";
       featureForms: "Formular-Tickets", featureFormsDesc: "Strukturierte Formulare statt Freitext",
       featureEscalation: "Auto-Eskalation", featureEscalationDesc: "Tickets werden nach Zeit automatisch eskaliert",
       featureFAQ: "Smart FAQ", featureFAQDesc: "Bot beantwortet hauefige Fragen automatisch",
+      welcomeFirst: "Willkommen bei Resolvo Tool",
+      welcomeBack: "Willkommen zurueck",
     },
     en: {
       home: "Home", add: "Add Bot", servers: "My Servers", premium: "Premium",
@@ -64,6 +66,8 @@ import { Router } from "express";
       featureForms: "Form Tickets", featureFormsDesc: "Structured forms instead of free text",
       featureEscalation: "Auto-Escalation", featureEscalationDesc: "Tickets auto-escalate after time",
       featureFAQ: "Smart FAQ", featureFAQDesc: "Bot answers common questions automatically",
+      welcomeFirst: "Welcome to Resolvo Tool",
+      welcomeBack: "Welcome back",
     }
   };
 
@@ -357,7 +361,18 @@ import { Router } from "express";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} - Resolvo Tool</title>
-    <style>${GLOBAL_STYLES}</style>
+    <style>${GLOBAL_STYLES}
+    /* Welcome overlay animation */
+    .welcome-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(11,15,26,0.98); display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
+    .welcome-overlay.active { opacity: 1; pointer-events: all; }
+    .welcome-overlay .welcome-logo { width: 96px; height: 96px; border-radius: 24px; margin-bottom: 24px; opacity: 0; transform: scale(0.6); animation: welcomePop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; animation-delay: 0.1s; }
+    .welcome-overlay .welcome-title { font-size: 1.8rem; font-weight: 700; color: #e6f1ff; margin-bottom: 8px; opacity: 0; transform: translateY(20px); animation: welcomeSlideUp 0.6s ease forwards; animation-delay: 0.4s; }
+    .welcome-overlay .welcome-sub { font-size: 1rem; color: #8aa2c9; opacity: 0; transform: translateY(15px); animation: welcomeSlideUp 0.5s ease forwards; animation-delay: 0.65s; }
+    .welcome-overlay .welcome-line { width: 60px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, #4f8cff, #7ab8ff); margin: 20px auto; opacity: 0; animation: welcomeGrow 0.5s ease forwards; animation-delay: 0.55s; }
+    @keyframes welcomePop { to { opacity: 1; transform: scale(1); } }
+    @keyframes welcomeSlideUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes welcomeGrow { from { width: 0; opacity: 0; } to { width: 60px; opacity: 1; } }
+</style>
   </head>
   <body>
     <div class="bg-mesh"></div>
@@ -414,6 +429,14 @@ import { Router } from "express";
       const stats = getBotStats();
 
       res.send(layout(txt("home"), `
+        <!-- Welcome overlay -->
+        <div id="welcomeOverlay" class="welcome-overlay active">
+          <img src="${LOGO_URL}" alt="" class="welcome-logo" onerror="this.style.display='none'">
+          <div class="welcome-title" id="welcomeTitle">${txt("welcomeFirst")}</div>
+          <div class="welcome-line"></div>
+          <div class="welcome-sub">${txt("heroDesc").substring(0, 60)}...</div>
+        </div>
+
         <div class="hero">
           <img src="${LOGO_URL}" alt="Resolvo Tool" class="hero-logo" onerror="this.style.display='none'">
           <h1>${txt("heroTitle")}</h1>
@@ -461,6 +484,25 @@ import { Router } from "express";
         </div>
         <script>
           (function() {
+            // Welcome animation
+            const overlay = document.getElementById('welcomeOverlay');
+            const title = document.getElementById('welcomeTitle');
+            const hasVisited = localStorage.getItem('resolvoVisited');
+            if (hasVisited) {
+              title.textContent = "${txt('welcomeBack')}";
+              overlay.classList.remove('active');
+              overlay.style.opacity = '0';
+              overlay.style.pointerEvents = 'none';
+            } else {
+              localStorage.setItem('resolvoVisited', 'true');
+              setTimeout(() => {
+                overlay.classList.remove('active');
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+              }, 2800);
+            }
+
+            // Counter animation
             const counters = document.querySelectorAll('.stat-num');
             counters.forEach(el => {
               const target = parseInt(el.dataset.target) || 0;
