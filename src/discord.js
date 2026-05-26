@@ -95,7 +95,7 @@ export function setupEmbed(config, guild) {
     description: `Passe das Ticket-System f\u00fcr **${guild?.name || "diesen Server"}** an.`,
     color: 0x57f287,
     fields,
-    footer: { text: "Klicke auf einen Button um zu konfigurieren" },
+    footer: { text: "Click a button to configure" },
   };
 }
 
