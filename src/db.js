@@ -37,7 +37,7 @@ export function runMigrations() {
       transcript_channel_id TEXT,
       support_role_id TEXT,
       button_color INTEGER DEFAULT 1,
-      button_text TEXT DEFAULT '\ud83c\udfab Ticket erstellen',
+      button_text TEXT DEFAULT 'Ticket erstellen',
       embed_color INTEGER DEFAULT 3447003,
       embed_title TEXT DEFAULT 'Support',
       embed_description TEXT DEFAULT 'Klicke auf den Button um ein Ticket zu erstellen.',
@@ -80,7 +80,7 @@ export function runMigrations() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
-  console.log("✅ Datenbank bereit:", "/app/data/resolvo.db");
+  console.log("[DB] Database ready:", "/app/data/resolvo.db");
 }
 
 // ── Guilds ──────────────────────────────────────────────────────────────────
