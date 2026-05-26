@@ -192,6 +192,23 @@ import Database from "better-sqlite3";
     db.prepare("UPDATE ticket_categories SET is_active = 0 WHERE id = ?").run(id);
   }
 
+  
+  // ── Legacy wrappers (used by gateway.js) ─────────────────────────────────────
+
+  export function setSupportRole(guildId, roleId) {
+    upsertPanelConfig(guildId, { support_role_id: roleId });
+  }
+
+  export function setPanelAppearance(guildId, { buttonColor, buttonText, embedColor, embedTitle, embedDescription }) {
+    upsertPanelConfig(guildId, {
+      button_color: buttonColor,
+      button_text: buttonText,
+      embed_color: embedColor,
+      embed_title: embedTitle,
+      embed_description: embedDescription,
+    });
+  }
+
   // ── Tickets ───────────────────────────────────────────────────────────────────
 
   export function createTicket(guildId, userId, channelId, priority = "medium", categoryId = null, subject = null) {
