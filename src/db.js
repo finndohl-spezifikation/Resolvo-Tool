@@ -209,6 +209,19 @@ import Database from "better-sqlite3";
     });
   }
 
+  
+  export function setPanelChannel(guildId, channelId) {
+    upsertPanelConfig(guildId, { panel_channel_id: channelId });
+  }
+
+  export function setTicketCategory(guildId, categoryId) {
+    upsertPanelConfig(guildId, { ticket_category_id: categoryId });
+  }
+
+  export function setTranscriptChannel(guildId, channelId) {
+    upsertPanelConfig(guildId, { transcript_channel_id: channelId });
+  }
+
   // ── Tickets ───────────────────────────────────────────────────────────────────
 
   export function createTicket(guildId, userId, channelId, priority = "medium", categoryId = null, subject = null) {
