@@ -9,6 +9,7 @@ const app = express();
 
 app.use(cors({ origin: "*" }));
 app.use(cookieParser());
+app.use(express.static("public"));
 app.use("/api/premium/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
