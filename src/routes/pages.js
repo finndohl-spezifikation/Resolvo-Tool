@@ -5,7 +5,11 @@ import { Router } from "express";
 
   const router = Router();
 
-  const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1508500695110647839&permissions=8&integration_type=0&scope=applications.commands+bot";
+  function getInviteUrl() {
+      const clientId = process.env.DISCORD_CLIENT_ID || "1508500695110647839";
+      return `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&integration_type=0&scope=applications.commands+bot`;
+    }
+    const INVITE_URL = getInviteUrl();
   const LOGO_URL = "/logo.jpg";
 
   const TRANSLATIONS = {
