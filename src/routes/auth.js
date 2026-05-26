@@ -138,7 +138,7 @@ import { Router } from "express";
 
       res.cookie("session", Buffer.from(JSON.stringify(session)).toString("base64"), {
         httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         sameSite: "lax",
       });
 
