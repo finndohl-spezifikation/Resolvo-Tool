@@ -41,6 +41,8 @@ export function runMigrations() {
       embed_color INTEGER DEFAULT 3447003,
       embed_title TEXT DEFAULT 'Support',
       embed_description TEXT DEFAULT 'Klicke auf den Button um ein Ticket zu erstellen.',
+      rating_enabled INTEGER DEFAULT 1,
+      ai_enabled INTEGER DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
