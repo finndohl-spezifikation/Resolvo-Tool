@@ -3,8 +3,14 @@ import { upsertUser } from "../db.js";
 
 const router = Router();
 
+const FALLBACK_CLIENT_ID = "1508500695110647839";
+
+function getClientId() {
+  return process.env.DISCORD_CLIENT_ID || FALLBACK_CLIENT_ID;
+}
+
 function getDiscordOAuthUrl(state = "") {
-  const clientId = process.env.DISCORD_CLIENT_ID;
+  const clientId = getClientId();
   const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
   const redirectUri = encodeURIComponent(`${baseUrl}/auth/callback`);
   const scope = encodeURIComponent("identify guilds");
@@ -12,7 +18,7 @@ function getDiscordOAuthUrl(state = "") {
 }
 
 router.get("/auth/login", (req, res) => {
-  const clientId = process.env.DISCORD_CLIENT_ID;
+  const clientId = getClientId();
   if (!clientId) {
     res.status(500).send("DISCORD_CLIENT_ID nicht konfiguriert.");
     return;
@@ -27,7 +33,7 @@ router.get("/auth/callback", async (req, res) => {
   const state = req.query.state;
   if (!code) { res.redirect("/?error=no_code"); return; }
 
-  const clientId = process.env.DISCORD_CLIENT_ID;
+  const clientId = getClientId();
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
   const baseUrl = process.env.DASHBOARD_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || "localhost"}`;
 
