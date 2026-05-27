@@ -24,7 +24,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
         {
           name: "add",
           type: 1,
-          description: "Fuege einen Nutzer zum Ticket hinzu",
+          description: "Füge einen Nutzer zum Ticket hinzu",
           options: [{ name: "user", type: 6, description: "Der Nutzer", required: true }],
         },
         {
@@ -80,12 +80,12 @@ const TOKEN = process.env.DISCORD_TOKEN;
     },
     {
       name: "faq",
-      description: "FAQ-Eintraege verwalten",
+      description: "FAQ-Einträge verwalten",
       options: [
         {
           name: "add",
           type: 1,
-          description: "FAQ-Eintrag hinzufuegen",
+          description: "FAQ-Eintrag hinzufügen",
           options: [
             { name: "question", type: 3, description: "Frage", required: true },
             { name: "answer", type: 3, description: "Antwort", required: true },
@@ -94,7 +94,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
         {
           name: "list",
           type: 1,
-          description: "FAQ-Eintraege anzeigen",
+          description: "FAQ-Einträge anzeigen",
         },
       ],
     },
