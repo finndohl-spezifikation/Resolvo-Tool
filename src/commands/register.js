@@ -19,7 +19,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
         {
           name: "close",
           type: 1,
-          description: "Schliesze das aktuelle Ticket",
+          description: "Schließen das aktuelle Ticket",
         },
         {
           name: "add",
@@ -101,6 +101,14 @@ const TOKEN = process.env.DISCORD_TOKEN;
     {
       name: "premium",
       description: "Informationen und Kauf von Resolvo Tool Premium",
+    },
+    {
+      name: "help",
+      description: "Lists all available commands (English)",
+    },
+    {
+      name: "dashboard",
+      description: "Get the link to the Resolvo Tool web dashboard",
     },
   ];
 
