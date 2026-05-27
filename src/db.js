@@ -335,6 +335,13 @@ import Database from "better-sqlite3";
 
   // ── Stats ──────────────────────────────────────────────────────────────────────
 
+    export function getGlobalTicketCount() {
+      try {
+        return db.prepare("SELECT COUNT(*) as count FROM tickets").get().count;
+      } catch (_) { return 0; }
+    }
+  
+
   export function getStats(guildId) {
     const open = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = 'open'").get(guildId).count;
     const closed = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = 'closed'").get(guildId).count;
