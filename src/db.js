@@ -345,7 +345,8 @@ import Database from "better-sqlite3";
   export function getStats(guildId) {
     const open = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = 'open'").get(guildId).count;
     const closed = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = 'closed'").get(guildId).count;
-    const escalated = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND escalated = 1").get(guildId).count;
+    let escalated = 0;
+    try { escalated = db.prepare("SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND escalated = 1").get(guildId).count; } catch (_) {}
     const avgRating = db.prepare(`
       SELECT AVG(r.rating) as avg FROM staff_ratings r
       JOIN tickets t ON r.ticket_id = t.id WHERE t.guild_id = ?
