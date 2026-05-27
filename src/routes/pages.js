@@ -26,7 +26,7 @@ import { Router } from "express";
       premiumCmd: "Nutze /premium in einem Server mit Resolvo Tool.", toServers: "Zu meinen Servern",
       panelActive: "Panel aktiv", panelInactive: "Panel nicht konfiguriert",
       openTickets: "Offene Tickets", closedTickets: "Geschlossen",
-      configure: "Konfigurieren", back: "Zurueck", save: "Speichern",
+      configure: "Konfigurieren", back: "Zurück", save: "Speichern",
       configTitle: "Server-Konfiguration", configDesc: "Passe das Ticket-System für diesen Server an.",
       panelChannel: "Panel-Channel", ticketCategory: "Ticket-Kategorie",
       transcriptChannel: "Transkript-Channel", supportRole: "Support-Rolle",
@@ -36,7 +36,7 @@ import { Router } from "express";
       aiSystem: "KI-Ticket-Klassifizierung", aiEnabled: "Automatische KI-Priorisierung aktivieren",
       aiExplain: "Die KI analysiert eingehende Tickets und setzt automatisch die Priorität (Niedrig / Mittel / Hoch / Kritisch) basierend auf dem Inhalt.",
       lang: "Sprache", liveServers: "aktive Server", liveInstalls: "Installationen",
-      featureTags: "Ticket-Tags", featureTagsDesc: "Farbcodierte Tags fuer jede Ticket-Kategorie",
+      featureTags: "Ticket-Tags", featureTagsDesc: "Farbcodierte Tags für jede Ticket-Kategorie",
       featureForms: "Formular-Tickets", featureFormsDesc: "Strukturierte Formulare statt Freitext",
       featureEscalation: "Auto-Eskalation", featureEscalationDesc: "Tickets werden nach Zeit automatisch eskaliert",
       featureFAQ: "Smart FAQ", featureFAQDesc: "Bot beantwortet häufige Fragen automatisch",
@@ -346,6 +346,7 @@ import { Router } from "express";
         { id: "add", href: "/add", label: txt("add"), icon: "+" },
         { id: "servers", href: "/servers", label: txt("servers"), icon: "S" },
         { id: "premium", href: "/premium", label: txt("premium"), icon: "P" },
+        { id: "support", href: "/support", label: "Support", icon: "?" },
         { id: "terms", href: "/terms", label: txt("terms"), icon: "T" },
         { id: "privacy", href: "/privacy", label: txt("privacy"), icon: "D" },
       ];
@@ -441,7 +442,25 @@ import { Router } from "express";
           <div class="welcome-sub">${txt("heroDesc").substring(0, 60)}...</div>
         </div>
 
-        <div class="hero">
+        <!-- Live Stats Bar (top, animated counters) -->
+          <div style="max-width:680px;margin:0 auto 32px;padding:20px 24px;background:rgba(18,25,42,0.85);backdrop-filter:blur(12px);border:1px solid rgba(79,140,255,0.12);border-radius:16px;display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;">
+            <div style="text-align:center;padding:0 28px;min-width:120px;">
+              <div class="stat-num" data-target="${stats.servers}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#4f8cff,#7aa8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
+              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${txt("liveServers")}</div>
+            </div>
+            <div style="width:1px;height:44px;background:rgba(79,140,255,0.15);margin:0 8px;"></div>
+            <div style="text-align:center;padding:0 28px;min-width:120px;">
+              <div class="stat-num" data-target="${stats.installs}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#4f8cff,#7aa8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
+              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${txt("liveInstalls")}</div>
+            </div>
+            <div style="width:1px;height:44px;background:rgba(79,140,255,0.15);margin:0 8px;"></div>
+            <div style="text-align:center;padding:0 28px;min-width:120px;">
+              <div class="stat-num" data-target="${stats.servers * 12}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#34d399,#4f8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
+              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${lang === "en" ? "Tickets solved" : "Tickets gelöst"}</div>
+            </div>
+          </div>
+
+        <div class="hero" style="padding-top:16px;">
           <img src="${LOGO_URL}" alt="Resolvo Tool" class="hero-logo" onerror="this.style.display='none'">
           <h1>${txt("heroTitle")}</h1>
           <p>${txt("heroDesc")}</p>
@@ -450,42 +469,60 @@ import { Router } from "express";
             <a href="/premium" class="btn btn-secondary">${txt("discoverPremium")}</a>
           </div>
         </div>
-        <div class="features-section">
+        <div style="max-width:700px;margin:0 auto 44px;text-align:center;padding:0 20px;">
+            <h2 style="font-size:1.2rem;color:#e8ecf4;margin-bottom:14px;font-weight:600;">${lang === "en" ? "Why Resolvo Tool?" : "Warum Resolvo Tool?"}</h2>
+            <p style="color:#5c7094;line-height:1.7;font-size:.88rem;">
+              ${lang === "en"
+                ? "Resolvo Tool revolutionizes your Discord support. Instead of chaotic DM floods, you get a professional ticket system right in your server. AI-powered classification, automatic escalation, and a smart FAQ ensure no request goes unanswered."
+                : "Resolvo Tool revolutioniert deinen Discord-Support. Statt chaotischer DM-Flut bekommst du ein professionelles Ticketsystem direkt in deinem Server. KI-gestützte Klassifizierung, automatische Eskalation und ein intelligentes FAQ sorgen dafür, dass keine Anfrage unbeantwortet bleibt."
+              }
+            </p>
+          </div>
+
+          <div class="features-section">
           <div class="container">
             <div class="features-grid">
               <div class="feature-card">
-                <div class="feature-icon">1</div>
+                <div class="feature-icon" style="background:rgba(79,140,255,0.12);color:#4f8cff;">1</div>
                 <h3>${txt("featureTags")}</h3>
                 <p>${txt("featureTagsDesc")}</p>
               </div>
               <div class="feature-card">
-                <div class="feature-icon">2</div>
+                <div class="feature-icon" style="background:rgba(52,211,153,0.12);color:#34d399;">2</div>
                 <h3>${txt("featureForms")}</h3>
                 <p>${txt("featureFormsDesc")}</p>
               </div>
               <div class="feature-card">
-                <div class="feature-icon">3</div>
+                <div class="feature-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;">3</div>
                 <h3>${txt("featureEscalation")}</h3>
                 <p>${txt("featureEscalationDesc")}</p>
               </div>
               <div class="feature-card">
-                <div class="feature-icon">4</div>
+                <div class="feature-icon" style="background:rgba(236,72,153,0.12);color:#ec4899;">4</div>
                 <h3>${txt("featureFAQ")}</h3>
                 <p>${txt("featureFAQDesc")}</p>
               </div>
             </div>
           </div>
         </div>
-        <div class="stats-bar">
-          <div class="stat">
-            <div class="stat-num" data-target="${stats.servers}">0</div>
-            <div class="stat-label">${txt("liveServers")}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-num" data-target="${stats.installs}">0</div>
-            <div class="stat-label">${txt("liveInstalls")}</div>
+        <div style="text-align:center;margin:44px 0 28px;">
+          <h2 style="font-size:1.15rem;color:#e8ecf4;margin-bottom:16px;font-weight:600;">${lang === "en" ? "Quick Start" : "Schnellstart"}</h2>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:560px;margin:0 auto;">
+            <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:12px;padding:16px;flex:1;min-width:120px;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="font-size:1.3rem;color:#4f8cff;font-weight:700;margin-bottom:4px;">1</div>
+              <div style="font-size:.8rem;color:#8aa2c9;">${lang === "en" ? "Add Bot" : "Bot hinzufügen"}</div>
+            </div>
+            <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:12px;padding:16px;flex:1;min-width:120px;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="font-size:1.3rem;color:#4f8cff;font-weight:700;margin-bottom:4px;">2</div>
+              <div style="font-size:.8rem;color:#8aa2c9;">${lang === "en" ? "Select Server" : "Server auswählen"}</div>
+            </div>
+            <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:12px;padding:16px;flex:1;min-width:120px;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="font-size:1.3rem;color:#4f8cff;font-weight:700;margin-bottom:4px;">3</div>
+              <div style="font-size:.8rem;color:#8aa2c9;">${lang === "en" ? "Configure Panel" : "Panel konfigurieren"}</div>
+            </div>
           </div>
         </div>
+
         <script>
           (function() {
             // Welcome animation
@@ -763,7 +800,94 @@ import { Router } from "express";
       `, { lang }));
     });
 
-    // --- Terms ---
+    // --- Support ---
+
+    router.get("/support", (req, res) => {
+        const lang = getLang(req);
+        const txt = (k) => t(lang, k);
+
+        res.send(layout("Support", `
+          <div class="page-header"><h1>${txt("supportTitle")}</h1><p>${txt("supportDesc")}</p></div>
+          <div class="content container">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;">
+              <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;max-width:380px;flex:1;min-width:280px;">
+                <div style="font-size:2rem;margin-bottom:10px;">🤖</div>
+                <h3 style="color:#fff;font-size:1.05rem;margin-bottom:8px;font-weight:600;">${txt("supportChat")}</h3>
+                <p style="color:#5c7094;font-size:.82rem;margin-bottom:16px;line-height:1.5;">${txt("supportChatDesc")}</p>
+                <div id="chatWidget" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:12px;padding:14px;height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+                  <div style="background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;">
+                    ${lang === "en" ? "Hi! How can I help you with Resolvo Tool today?" : "Hallo! Wie kann ich dir bei Resolvo Tool helfen?"}
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                  <input type="text" id="chatInput" placeholder="${lang === "en" ? "Type your question..." : "Deine Frage..."}" style="flex:1;background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:8px 12px;color:#e8ecf4;font-size:.82rem;outline:none;" onkeydown="if(event.key==='Enter')sendChat()">
+                  <button onclick="sendChat()" style="background:#4f8cff;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:.82rem;cursor:pointer;font-weight:500;">➜</button>
+                </div>
+              </div>
+              <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;max-width:380px;flex:1;min-width:280px;">
+                <div style="font-size:2rem;margin-bottom:10px;">✉️</div>
+                <h3 style="color:#fff;font-size:1.05rem;margin-bottom:8px;font-weight:600;">${txt("supportContact")}</h3>
+                <p style="color:#5c7094;font-size:.82rem;margin-bottom:16px;line-height:1.5;">${txt("supportContactDesc")}</p>
+                <form id="contactForm" onsubmit="sendContact(event)" style="display:flex;flex-direction:column;gap:12px;">
+                  <input type="text" name="name" placeholder="${txt("supportName")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
+                  <input type="email" name="email" placeholder="${txt("supportEmail")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
+                  <textarea name="issue" placeholder="${txt("supportIssue")}" required rows="4" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;resize:vertical;"></textarea>
+                  <button type="submit" style="background:#34d399;color:#0b0f1a;border:none;border-radius:8px;padding:10px;font-size:.85rem;cursor:pointer;font-weight:600;">${txt("supportSend")}</button>
+                </form>
+                <div id="contactSuccess" style="display:none;color:#34d399;font-size:.85rem;margin-top:12px;text-align:center;">${txt("supportSuccess")}</div>
+              </div>
+            </div>
+          </div>
+          <script>
+            async function sendChat() {
+              const input = document.getElementById('chatInput');
+              const widget = document.getElementById('chatWidget');
+              const text = input.value.trim();
+              if (!text) return;
+              const userMsg = document.createElement('div');
+              userMsg.style.cssText = 'background:rgba(52,211,153,0.1);color:#34d399;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-end;';
+              userMsg.textContent = text;
+              widget.appendChild(userMsg);
+              input.value = '';
+              widget.scrollTop = widget.scrollHeight;
+              try {
+                const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) });
+                const data = await res.json();
+                const botMsg = document.createElement('div');
+                botMsg.style.cssText = 'background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;';
+                botMsg.textContent = data.reply || (lang === "en" ? "I'm sorry, I didn't understand that." : "Entschuldigung, das habe ich nicht verstanden.");
+                widget.appendChild(botMsg);
+                widget.scrollTop = widget.scrollHeight;
+              } catch (e) {
+                const errMsg = document.createElement('div');
+                errMsg.style.cssText = 'background:rgba(248,113,113,0.1);color:#f87171;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;';
+                errMsg.textContent = lang === "en" ? "Error connecting to AI." : "Fehler bei der KI-Verbindung.";
+                widget.appendChild(errMsg);
+                widget.scrollTop = widget.scrollHeight;
+              }
+            }
+            async function sendContact(e) {
+              e.preventDefault();
+              const form = document.getElementById('contactForm');
+              const data = new FormData(form);
+              const payload = { name: data.get('name'), email: data.get('email'), issue: data.get('issue') };
+              try {
+                const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (res.ok) {
+                  form.style.display = 'none';
+                  document.getElementById('contactSuccess').style.display = 'block';
+                } else {
+                  alert(lang === "en" ? "Failed to send. Please try again." : "Senden fehlgeschlagen. Bitte versuche es erneut.");
+                }
+              } catch (e) {
+                alert(lang === "en" ? "Network error." : "Netzwerkfehler.");
+              }
+            }
+          </script>
+        `, { activeNav: "support", lang }));
+      });
+
+      // --- Terms ---
 
   router.get("/terms", (req, res) => {
       const lang = getLang(req);
@@ -785,12 +909,12 @@ import { Router } from "express";
           <div class="page-header"><h1>Nutzungsbedingungen</h1></div>
           <div class="content container">
             <p class="subtitle" style="color:${COLORS.textMuted};margin-bottom:28px;font-size:.82rem;">Zuletzt aktualisiert: ${new Date().toLocaleDateString("de-DE")}</p>
-            <h2>1. Geltungsbereich</h2><p>Diese Nutzungsbedingungen gelten fuer die Nutzung des Discord-Bots "Resolvo Tool" sowie des zugehoerigen Web-Dashboards.</p>
-            <h2>2. Nutzung des Dienstes</h2><p>Resolvo Tool darf ausschliesslich fuer legale Zwecke und in Übereinstimmung mit den Discord-Nutzungsbedingungen verwendet werden.</p>
-            <h2>3. Premium-Abonnement</h2><p>Das Premium-Upgrade wird fuer eine einmalige Zahlung angeboten und gewaehrt dauerhaften Zugang.</p>
+            <h2>1. Geltungsbereich</h2><p>Diese Nutzungsbedingungen gelten für die Nutzung des Discord-Bots "Resolvo Tool" sowie des zugehörigen Web-Dashboards.</p>
+            <h2>2. Nutzung des Dienstes</h2><p>Resolvo Tool darf ausschließlich für legale Zwecke und in Übereinstimmung mit den Discord-Nutzungsbedingungen verwendet werden.</p>
+            <h2>3. Premium-Abonnement</h2><p>Das Premium-Upgrade wird für eine einmalige Zahlung angeboten und gewährt dauerhaften Zugang.</p>
             <h2>4. Datenspeicherung</h2><p>Wir speichern Discord-Nutzer-IDs, Server-IDs und Ticket-Inhalte zur Bereitstellung des Dienstes.</p>
-            <h2>5. Verfuegbarkeit</h2><p>Wir bemuehen uns um eine hohe Verfuegbarkeit, können jedoch keine 100%ige Verfuegbarkeit garantieren.</p>
-            <h2>6. Haftungsbeschraenkung</h2><p>Resolvo Tool haftet nicht fuer Schaeden, die durch die Nutzung oder Nicht-Nutzung des Dienstes entstehen.</p>
+            <h2>5. Verfügbarkeit</h2><p>Wir bemuehen uns um eine hohe Verfügbarkeit, können jedoch keine 100%ige Verfügbarkeit garantieren.</p>
+            <h2>6. Haftungsbeschränkung</h2><p>Resolvo Tool haftet nicht für Schäden, die durch die Nutzung oder Nicht-Nutzung des Dienstes entstehen.</p>
             <h2>7. Kontakt</h2><p>Bei Fragen erreichst du uns über unseren Discord-Support.</p>
           </div>
         `, { activeNav: "terms", lang }));
@@ -820,17 +944,59 @@ import { Router } from "express";
           <div class="page-header"><h1>Datenschutzerklärung</h1></div>
           <div class="content container">
             <p class="subtitle" style="color:${COLORS.textMuted};margin-bottom:28px;font-size:.82rem;">Zuletzt aktualisiert: ${new Date().toLocaleDateString("de-DE")}</p>
-            <h2>1. Verantwortlicher</h2><p>Verantwortlich fuer die Datenverarbeitung ist der Betreiber von Resolvo Tool.</p>
+            <h2>1. Verantwortlicher</h2><p>Verantwortlich für die Datenverarbeitung ist der Betreiber von Resolvo Tool.</p>
             <h2>2. Welche Daten wir speichern</h2><ul><li>Discord Nutzer-ID und Nutzername</li><li>Discord Server-ID und Servername</li><li>Ticket-Inhalte und Nachrichten</li><li>Bewertungen und Zeitstempel</li><li>Zahlungsstatus (keine Zahlungsdaten)</li></ul>
-            <h2>3. Zweck</h2><p>Die gespeicherten Daten werden ausschliesslich zur Bereitstellung des Ticket-Systems verwendet.</p>
+            <h2>3. Zweck</h2><p>Die gespeicherten Daten werden ausschließlich zur Bereitstellung des Ticket-Systems verwendet.</p>
             <h2>4. Drittanbieter</h2><p><strong>Stripe:</strong> Zahlungsabwicklung.</p><p><strong>Discord:</strong> Nutzerdaten über die Discord API.</p>
-            <h2>5. Datenloeschung</h2><p>Du kannst jederzeit die Loeschung deiner Daten beantragen.</p>
-            <h2>6. Deine Rechte</h2><ul><li>Recht auf Auskunft</li><li>Recht auf Berichtigung und Loeschung</li><li>Recht auf Einschraenkung</li></ul>
-            <h2>7. Datensicherheit</h2><p>Alle Daten werden verschluesselt übertragen (HTTPS) und in einer SQLite-Datenbank gespeichert.</p>
+            <h2>5. Datenlöschung</h2><p>Du kannst jederzeit die Löschung deiner Daten beantragen.</p>
+            <h2>6. Deine Rechte</h2><ul><li>Recht auf Auskunft</li><li>Recht auf Berichtigung und Löschung</li><li>Recht auf Einschränkung</li></ul>
+            <h2>7. Datensicherheit</h2><p>Alle Daten werden verschlüsselt übertragen (HTTPS) und in einer SQLite-Datenbank gespeichert.</p>
           </div>
         `, { activeNav: "privacy", lang }));
       }
     });
 
-    export default router;
-  
+    
+      // --- API: Support Chat ---
+
+    router.post("/api/chat", async (req, res) => {
+        const { message } = req.body;
+        if (!message || typeof message !== "string") {
+          return res.status(400).json({ error: "Message required" });
+        }
+        const lower = message.toLowerCase();
+        let reply = "";
+        if (lower.includes("ticket")) {
+          reply = "Du kannst ein Ticket mit /ticket in deinem Server erstellen. Der Bot erstellt dann automatisch einen privaten Kanal.";
+        } else if (lower.includes("premium") || lower.includes("preis")) {
+          reply = "Premium kostet einmalig 5,99 EUR und schaltet erweiterte Statistiken, unbegrenzte Kategorien und KI-Klassifizierung frei.";
+        } else if (lower.includes("panel") || lower.includes("konfigur")) {
+          reply = "Gehe auf resolvo-tool-production.up.railway.app, melde dich mit Discord an und wähle deinen Server aus, um das Panel zu konfigurieren.";
+        } else if (lower.includes("help") || lower.includes("hilfe") || lower.includes("befehl")) {
+          reply = "Verfügbare Befehle: /ticket, /close, /add, /remove, /category, /faq, /premium, /help, /dashboard.";
+        } else if (lower.includes("invite") || lower.includes("einladen")) {
+          reply = "Lade den Bot hier ein: https://discord.com/oauth2/authorize?client_id=1508500695110647839&permissions=8&integration_type=0&scope=applications.commands+bot";
+        } else if (lower.includes("faq")) {
+          reply = "Das Smart-FAQ-System beantwortet häufige Fragen automatisch. Du kannst Einträge mit /faq add hinzufügen.";
+        } else if (lower.includes("ki") || lower.includes("ai")) {
+          reply = "Die KI-Klassifizierung analysiert eingehende Tickets und setzt automatisch Prioritäten (Niedrig, Mittel, Hoch, Kritisch).";
+        } else if (lower.includes("email") || lower.includes("kontakt")) {
+          reply = "Du kannst uns über das Support-Panel auf der Website kontaktieren: resolvo-tool-production.up.railway.app/support";
+        } else {
+          reply = "Danke für deine Nachricht! Für spezifische Fragen empfehle ich das Support-Panel auf unserer Website oder die Befehle /help und /dashboard im Discord.";
+        }
+        res.json({ reply });
+      });
+
+      // --- API: Contact Form ---
+
+    router.post("/api/contact", async (req, res) => {
+        const { name, email, issue } = req.body;
+        if (!name || !email || !issue) {
+          return res.status(400).json({ error: "All fields required" });
+        }
+        console.log("[Contact Form] From: " + name + " <" + email + "> - " + issue.substring(0, 100));
+        res.json({ success: true, message: "Message received" });
+      });
+
+      export default router;
