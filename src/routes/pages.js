@@ -1,7 +1,7 @@
 import { Router } from "express";
   import { getSession } from "./auth.js";
   import { getClient } from "../gateway.js";
-  import { getPanelConfig, getStats, upsertPanelConfig, getGuild } from "../db.js";
+  import { getPanelConfig, getStats, upsertPanelConfig, getGuild, getGlobalTicketCount } from "../db.js";
 
   const router = Router();
 
@@ -422,8 +422,8 @@ import { Router } from "express";
   function getBotStats() {
       const client = getClient();
       const servers = client ? client.guilds.cache.size : 0;
-      const installs = servers * 3;
-      return { servers, installs };
+      const tickets = getGlobalTicketCount();
+      return { servers, tickets };
     }
 
     // --- Homepage ---
@@ -443,23 +443,18 @@ import { Router } from "express";
         </div>
 
         <!-- Live Stats Bar (top, animated counters) -->
-          <div style="max-width:680px;margin:0 auto 32px;padding:20px 24px;background:rgba(18,25,42,0.85);backdrop-filter:blur(12px);border:1px solid rgba(79,140,255,0.12);border-radius:16px;display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;">
-            <div style="text-align:center;padding:0 28px;min-width:120px;">
-              <div class="stat-num" data-target="${stats.servers}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#4f8cff,#7aa8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
-              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${txt("liveServers")}</div>
+            <div style="max-width:480px;margin:0 auto 32px;padding:18px 32px;background:rgba(18,25,42,0.85);backdrop-filter:blur(12px);border:1px solid rgba(79,140,255,0.12);border-radius:16px;display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;">
+              <div style="text-align:center;padding:0 36px;min-width:130px;">
+                <div class="stat-num" data-target="${stats.tickets}" style="font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,#34d399,#4f8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
+                <div style="font-size:.72rem;color:#5c7094;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${lang === "en" ? "Tickets resolved" : "Tickets bearbeitet"}</div>
+              </div>
+              <div style="width:1px;height:48px;background:rgba(79,140,255,0.15);flex-shrink:0;"></div>
+              <div style="text-align:center;padding:0 36px;min-width:130px;">
+                <div class="stat-num" data-target="${stats.servers}" style="font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,#4f8cff,#7aa8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
+                <div style="font-size:.72rem;color:#5c7094;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${lang === "en" ? "Active Servers" : "Aktive Server"}</div>
+              </div>
             </div>
-            <div style="width:1px;height:44px;background:rgba(79,140,255,0.15);margin:0 8px;"></div>
-            <div style="text-align:center;padding:0 28px;min-width:120px;">
-              <div class="stat-num" data-target="${stats.installs}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#4f8cff,#7aa8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
-              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${txt("liveInstalls")}</div>
-            </div>
-            <div style="width:1px;height:44px;background:rgba(79,140,255,0.15);margin:0 8px;"></div>
-            <div style="text-align:center;padding:0 28px;min-width:120px;">
-              <div class="stat-num" data-target="${stats.servers * 12}" style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#34d399,#4f8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</div>
-              <div style="font-size:.78rem;color:#5c7094;margin-top:2px;font-weight:500;">${lang === "en" ? "Tickets solved" : "Tickets gelöst"}</div>
-            </div>
-          </div>
-
+  
         <div class="hero" style="padding-top:16px;">
           <img src="${LOGO_URL}" alt="Resolvo Tool" class="hero-logo" onerror="this.style.display='none'">
           <h1>${txt("heroTitle")}</h1>
@@ -479,33 +474,7 @@ import { Router } from "express";
             </p>
           </div>
 
-          <div class="features-section">
-          <div class="container">
-            <div class="features-grid">
-              <div class="feature-card">
-                <div class="feature-icon" style="background:rgba(79,140,255,0.12);color:#4f8cff;">1</div>
-                <h3>${txt("featureTags")}</h3>
-                <p>${txt("featureTagsDesc")}</p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon" style="background:rgba(52,211,153,0.12);color:#34d399;">2</div>
-                <h3>${txt("featureForms")}</h3>
-                <p>${txt("featureFormsDesc")}</p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;">3</div>
-                <h3>${txt("featureEscalation")}</h3>
-                <p>${txt("featureEscalationDesc")}</p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon" style="background:rgba(236,72,153,0.12);color:#ec4899;">4</div>
-                <h3>${txt("featureFAQ")}</h3>
-                <p>${txt("featureFAQDesc")}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="text-align:center;margin:44px 0 28px;">
+        <div style="text-align:center;margin:0 0 32px;">
           <h2 style="font-size:1.15rem;color:#e8ecf4;margin-bottom:16px;font-weight:600;">${lang === "en" ? "Quick Start" : "Schnellstart"}</h2>
           <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:560px;margin:0 auto;">
             <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:12px;padding:16px;flex:1;min-width:120px;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -519,6 +488,32 @@ import { Router } from "express";
             <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:12px;padding:16px;flex:1;min-width:120px;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="font-size:1.3rem;color:#4f8cff;font-weight:700;margin-bottom:4px;">3</div>
               <div style="font-size:.8rem;color:#8aa2c9;">${lang === "en" ? "Configure Panel" : "Panel konfigurieren"}</div>
+            </div>
+          </div>
+        </div>
+          <div class="features-section">
+          <div class="container">
+            <div class="features-grid">
+              <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(79,140,255,0.12);color:#4f8cff;">🎫</div>
+                <h3>${txt("featureTags")}</h3>
+                <p>${txt("featureTagsDesc")}</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(52,211,153,0.12);color:#34d399;">📋</div>
+                <h3>${txt("featureForms")}</h3>
+                <p>${txt("featureFormsDesc")}</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;">⚡</div>
+                <h3>${txt("featureEscalation")}</h3>
+                <p>${txt("featureEscalationDesc")}</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(236,72,153,0.12);color:#ec4899;">💡</div>
+                <h3>${txt("featureFAQ")}</h3>
+                <p>${txt("featureFAQDesc")}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -803,89 +798,122 @@ import { Router } from "express";
     // --- Support ---
 
     router.get("/support", (req, res) => {
-        const lang = getLang(req);
-        const txt = (k) => t(lang, k);
+          const lang = getLang(req);
+          const txt = (k) => t(lang, k);
 
-        res.send(layout("Support", `
-          <div class="page-header"><h1>${txt("supportTitle")}</h1><p>${txt("supportDesc")}</p></div>
-          <div class="content container">
-            <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;">
-              <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;max-width:380px;flex:1;min-width:280px;">
-                <div style="font-size:2rem;margin-bottom:10px;">🤖</div>
-                <h3 style="color:#fff;font-size:1.05rem;margin-bottom:8px;font-weight:600;">${txt("supportChat")}</h3>
-                <p style="color:#5c7094;font-size:.82rem;margin-bottom:16px;line-height:1.5;">${txt("supportChatDesc")}</p>
-                <div id="chatWidget" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:12px;padding:14px;height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
-                  <div style="background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;">
-                    ${lang === "en" ? "Hi! How can I help you with Resolvo Tool today?" : "Hallo! Wie kann ich dir bei Resolvo Tool helfen?"}
+          res.send(layout("Support", `
+            <div class="page-header"><h1>${txt("supportTitle")}</h1><p>${txt("supportDesc")}</p></div>
+            <div class="content container">
+              <div style="max-width:520px;margin:0 auto;">
+
+                <!-- Chat Widget (always visible) -->
+                <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;margin-bottom:20px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                    <div style="font-size:1.4rem;">🤖</div>
+                    <div>
+                      <h3 style="color:#fff;font-size:1rem;margin:0;font-weight:600;">${txt("supportChat")}</h3>
+                      <p style="color:#5c7094;font-size:.75rem;margin:2px 0 0;">${txt("supportChatDesc")}</p>
+                    </div>
+                  </div>
+                  <div id="chatWidget" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:12px;padding:14px;height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+                    <div style="background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.8rem;max-width:85%;align-self:flex-start;">
+                      ${lang === "en" ? "Hi! How can I help you with Resolvo Tool today?" : "Hallo! Wie kann ich dir bei Resolvo Tool helfen?"}
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:10px;">
+                    <input type="text" id="chatInput" placeholder="${lang === "en" ? "Type your question..." : "Deine Frage..."}" style="flex:1;background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:8px 12px;color:#e8ecf4;font-size:.82rem;outline:none;" onkeydown="if(event.key==='Enter')sendChat()">
+                    <button onclick="sendChat()" style="background:#4f8cff;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.82rem;cursor:pointer;font-weight:500;white-space:nowrap;">
+                      ${lang === "en" ? "Send" : "Senden"}
+                    </button>
                   </div>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:10px;">
-                  <input type="text" id="chatInput" placeholder="${lang === "en" ? "Type your question..." : "Deine Frage..."}" style="flex:1;background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:8px 12px;color:#e8ecf4;font-size:.82rem;outline:none;" onkeydown="if(event.key==='Enter')sendChat()">
-                  <button onclick="sendChat()" style="background:#4f8cff;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:.82rem;cursor:pointer;font-weight:500;">➜</button>
+
+                <!-- Contact form — hidden until bot can't help -->
+                <div id="contactSection" style="display:none;">
+                  <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                      <div style="font-size:1.4rem;">✉️</div>
+                      <div>
+                        <h3 style="color:#fff;font-size:1rem;margin:0;font-weight:600;">${txt("supportContact")}</h3>
+                        <p style="color:#5c7094;font-size:.75rem;margin:2px 0 0;">${txt("supportContactDesc")}</p>
+                      </div>
+                    </div>
+                    <form id="contactForm" onsubmit="sendContact(event)" style="display:flex;flex-direction:column;gap:12px;">
+                      <input type="text" name="name" placeholder="${txt("supportName")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
+                      <input type="email" name="email" placeholder="${txt("supportEmail")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
+                      <textarea name="issue" placeholder="${txt("supportIssue")}" required rows="4" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;resize:vertical;"></textarea>
+                      <button type="submit" style="background:#34d399;color:#0b0f1a;border:none;border-radius:8px;padding:10px;font-size:.85rem;cursor:pointer;font-weight:600;">${txt("supportSend")}</button>
+                    </form>
+                    <div id="contactSuccess" style="display:none;color:#34d399;font-size:.85rem;margin-top:12px;text-align:center;">${txt("supportSuccess")}</div>
+                  </div>
                 </div>
-              </div>
-              <div style="background:#12192a;border:1px solid #1e2d4d;border-radius:16px;padding:28px;max-width:380px;flex:1;min-width:280px;">
-                <div style="font-size:2rem;margin-bottom:10px;">✉️</div>
-                <h3 style="color:#fff;font-size:1.05rem;margin-bottom:8px;font-weight:600;">${txt("supportContact")}</h3>
-                <p style="color:#5c7094;font-size:.82rem;margin-bottom:16px;line-height:1.5;">${txt("supportContactDesc")}</p>
-                <form id="contactForm" onsubmit="sendContact(event)" style="display:flex;flex-direction:column;gap:12px;">
-                  <input type="text" name="name" placeholder="${txt("supportName")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
-                  <input type="email" name="email" placeholder="${txt("supportEmail")}" required style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;">
-                  <textarea name="issue" placeholder="${txt("supportIssue")}" required rows="4" style="background:#0b0f1a;border:1px solid #1e2d4d;border-radius:8px;padding:10px 12px;color:#e8ecf4;font-size:.82rem;outline:none;resize:vertical;"></textarea>
-                  <button type="submit" style="background:#34d399;color:#0b0f1a;border:none;border-radius:8px;padding:10px;font-size:.85rem;cursor:pointer;font-weight:600;">${txt("supportSend")}</button>
-                </form>
-                <div id="contactSuccess" style="display:none;color:#34d399;font-size:.85rem;margin-top:12px;text-align:center;">${txt("supportSuccess")}</div>
+
               </div>
             </div>
-          </div>
-          <script>
-            async function sendChat() {
-              const input = document.getElementById('chatInput');
-              const widget = document.getElementById('chatWidget');
-              const text = input.value.trim();
-              if (!text) return;
-              const userMsg = document.createElement('div');
-              userMsg.style.cssText = 'background:rgba(52,211,153,0.1);color:#34d399;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-end;';
-              userMsg.textContent = text;
-              widget.appendChild(userMsg);
-              input.value = '';
-              widget.scrollTop = widget.scrollHeight;
-              try {
-                const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) });
-                const data = await res.json();
-                const botMsg = document.createElement('div');
-                botMsg.style.cssText = 'background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;';
-                botMsg.textContent = data.reply || (lang === "en" ? "I'm sorry, I didn't understand that." : "Entschuldigung, das habe ich nicht verstanden.");
-                widget.appendChild(botMsg);
+            <script>
+              const lang = "${lang}";
+              async function sendChat() {
+                const input = document.getElementById('chatInput');
+                const widget = document.getElementById('chatWidget');
+                const text = input.value.trim();
+                if (!text) return;
+                input.disabled = true;
+                const userMsg = document.createElement('div');
+                userMsg.style.cssText = 'background:rgba(52,211,153,0.1);color:#34d399;padding:8px 12px;border-radius:10px;font-size:.8rem;max-width:85%;align-self:flex-end;';
+                userMsg.textContent = text;
+                widget.appendChild(userMsg);
+                input.value = '';
                 widget.scrollTop = widget.scrollHeight;
-              } catch (e) {
-                const errMsg = document.createElement('div');
-                errMsg.style.cssText = 'background:rgba(248,113,113,0.1);color:#f87171;padding:8px 12px;border-radius:10px;font-size:.78rem;max-width:85%;align-self:flex-start;';
-                errMsg.textContent = lang === "en" ? "Error connecting to AI." : "Fehler bei der KI-Verbindung.";
-                widget.appendChild(errMsg);
-                widget.scrollTop = widget.scrollHeight;
-              }
-            }
-            async function sendContact(e) {
-              e.preventDefault();
-              const form = document.getElementById('contactForm');
-              const data = new FormData(form);
-              const payload = { name: data.get('name'), email: data.get('email'), issue: data.get('issue') };
-              try {
-                const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) {
-                  form.style.display = 'none';
-                  document.getElementById('contactSuccess').style.display = 'block';
-                } else {
-                  alert(lang === "en" ? "Failed to send. Please try again." : "Senden fehlgeschlagen. Bitte versuche es erneut.");
+                try {
+                  const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, lang }) });
+                  const data = await res.json();
+                  const botMsg = document.createElement('div');
+                  botMsg.style.cssText = 'background:rgba(79,140,255,0.1);color:#7aa8ff;padding:8px 12px;border-radius:10px;font-size:.8rem;max-width:85%;align-self:flex-start;';
+                  botMsg.textContent = data.reply;
+                  widget.appendChild(botMsg);
+                  widget.scrollTop = widget.scrollHeight;
+                  if (!data.canHelp) {
+                    const hint = document.createElement('div');
+                    hint.style.cssText = 'align-self:flex-start;margin-top:4px;';
+                    hint.innerHTML = '<button onclick="showContactForm()" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25);border-radius:8px;padding:6px 14px;font-size:.76rem;cursor:pointer;font-weight:600;">' + (lang === 'en' ? '✉ Contact Support' : '✉ Kontaktformular öffnen') + '</button>';
+                    widget.appendChild(hint);
+                    widget.scrollTop = widget.scrollHeight;
+                  }
+                } catch (e) {
+                  const errMsg = document.createElement('div');
+                  errMsg.style.cssText = 'background:rgba(248,113,113,0.1);color:#f87171;padding:8px 12px;border-radius:10px;font-size:.8rem;max-width:85%;align-self:flex-start;';
+                  errMsg.textContent = lang === 'en' ? 'Connection error. Please try again.' : 'Verbindungsfehler. Bitte erneut versuchen.';
+                  widget.appendChild(errMsg);
+                  widget.scrollTop = widget.scrollHeight;
                 }
-              } catch (e) {
-                alert(lang === "en" ? "Network error." : "Netzwerkfehler.");
+                input.disabled = false;
+                input.focus();
               }
-            }
-          </script>
-        `, { activeNav: "support", lang }));
-      });
+              function showContactForm() {
+                const section = document.getElementById('contactSection');
+                section.style.display = 'block';
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+              async function sendContact(e) {
+                e.preventDefault();
+                const form = document.getElementById('contactForm');
+                const data = new FormData(form);
+                const payload = { name: data.get('name'), email: data.get('email'), issue: data.get('issue') };
+                try {
+                  const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                  if (res.ok) {
+                    form.style.display = 'none';
+                    document.getElementById('contactSuccess').style.display = 'block';
+                  } else {
+                    alert(lang === 'en' ? 'Failed to send. Please try again.' : 'Senden fehlgeschlagen. Bitte erneut versuchen.');
+                  }
+                } catch (e) {
+                  alert(lang === 'en' ? 'Network error.' : 'Netzwerkfehler.');
+                }
+              }
+            </script>
+          `, { activeNav: "support", lang }));
+        });
 
       // --- Terms ---
 
