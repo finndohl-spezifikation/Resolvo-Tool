@@ -41,13 +41,13 @@ export const commands = [
   new SlashCommandBuilder()
     .setName("premium")
     .setDescription("Informationen und Kauf von Resolvo Tool Premium"),
-];
   new SlashCommandBuilder()
     .setName("help")
     .setDescription("Lists all available commands (English)"),
   new SlashCommandBuilder()
     .setName("dashboard")
     .setDescription("Get the link to the Resolvo Tool web dashboard"),
+];
 
 // ── Gateway Startup ────────────────────────────────────────────────────────────────
 
@@ -236,7 +236,11 @@ async function handleSlashCommand(interaction) {
           description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n\u2022 Erweiterte Statistiken\n\u2022 Unbegrenzte Ticket-Kategorien\n\u2022 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99\u20ac** \u2014 dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
           color: 0xffd700,
           footer: { text: "Resolvo Tool Premium" },
-
+        }],
+        flags: 64,
+      });
+      break;
+    }
     case "help": {
       await interaction.reply({
         embeds: [{
@@ -274,11 +278,6 @@ async function handleSlashCommand(interaction) {
 **-> [Open Dashboard](" + dashUrl + ")**",
           color: 0x5865f2,
           footer: { text: "Resolvo Tool - resolvo-tool-production.up.railway.app" },
-        }],
-        flags: 64,
-      });
-      break;
-    }
         }],
         flags: 64,
       });
