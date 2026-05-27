@@ -65,7 +65,7 @@ import { Router } from "express";
           await handleCloseTicket(interaction, res, guildId, userId);
         } else if (sub === "add") {
           const targetId = interaction.data.options?.[0]?.options?.[0]?.value;
-          res.json(ephemeralReply(`OK: <@${targetId}> wurde zum Ticket hinzugefuegt.`));
+          res.json(ephemeralReply(`OK: <@${targetId}> wurde zum Ticket hinzugefügt.`));
         } else if (sub === "remove") {
           const targetId = interaction.data.options?.[0]?.options?.[0]?.value;
           res.json(ephemeralReply(`OK: <@${targetId}> wurde aus dem Ticket entfernt.`));
@@ -180,7 +180,7 @@ import { Router } from "express";
           if (q && a) {
             const { addFaqEntry } = await import("../db.js");
             addFaqEntry(guildId, q, a);
-            res.json(ephemeralReply("OK: FAQ-Eintrag hinzugefuegt."));
+            res.json(ephemeralReply("OK: FAQ-Eintrag hinzugefügt."));
           } else {
             res.json(ephemeralReply("Error: Frage und Antwort benoetigt."));
           }
@@ -188,10 +188,10 @@ import { Router } from "express";
           const { getFaqEntries } = await import("../db.js");
           const faqs = getFaqEntries(guildId);
           if (faqs.length === 0) {
-            res.json(ephemeralReply("Keine FAQ-Eintraege vorhanden."));
+            res.json(ephemeralReply("Keine FAQ-Einträge vorhanden."));
           } else {
             const fields = faqs.slice(0, 10).map(f => ({ name: f.question.substring(0, 100), value: f.answer.substring(0, 100), inline: false }));
-            res.json(embedReply({ title: "FAQ-Eintraege", color: 0x5865f2, fields, footer: { text: `${faqs.length} Eintraege` } }));
+            res.json(embedReply({ title: "FAQ-Einträge", color: 0x5865f2, fields, footer: { text: `${faqs.length} Einträge` } }));
           }
         }
         break;
@@ -224,7 +224,7 @@ import { Router } from "express";
         res.json({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: "Waehle eine Kategorie fuer dein Ticket:",
+            content: "Waehle eine Kategorie für dein Ticket:",
             components: categoryButtons(categories),
             flags: 64,
           },
@@ -252,7 +252,7 @@ import { Router } from "express";
       const rating = parseInt(customId.split("_")[1]);
       const ticket = getTicketByChannel(channelId);
       if (ticket) addRating(ticket.id, rating, null);
-      res.json(ephemeralReply(`OK: Danke fuer deine Bewertung von **${rating}/5**`));
+      res.json(ephemeralReply(`OK: Danke für deine Bewertung von **${rating}/5**`));
       return;
     }
 
@@ -297,7 +297,7 @@ import { Router } from "express";
       }
 
       await sendMessage(channel.id, `<@${userId}>`, closeButton(), [ticketEmbed(ticket.id, userId, config, tags)]);
-      console.log(`[Ticket] #${ticket.id} erstellt fuer ${userId} (Prio: ${priority}, Tags: ${tags.join(", ")})`);
+      console.log(`[Ticket] #${ticket.id} erstellt für ${userId} (Prio: ${priority}, Tags: ${tags.join(", ")})`);
 
       // Smart FAQ check
       if (config?.faq_enabled && options.subject) {
