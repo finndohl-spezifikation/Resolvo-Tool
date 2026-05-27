@@ -273,9 +273,7 @@ async function handleSlashCommand(interaction) {
       await interaction.reply({
         embeds: [{
           title: "Resolvo Tool Dashboard",
-          description: "Manage your server settings, view statistics, and configure the ticket panel here:
-
-**-> [Open Dashboard](" + dashUrl + ")**",
+          description: `Manage your server settings, view statistics, and configure the ticket panel here:\n\n**-> [Open Dashboard](${dashUrl})**`,
           color: 0x5865f2,
           footer: { text: "Resolvo Tool - resolvo-tool-production.up.railway.app" },
         }],
