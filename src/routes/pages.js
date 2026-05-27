@@ -14,11 +14,11 @@ import { Router } from "express";
 
   const TRANSLATIONS = {
     de: {
-      home: "Startseite", add: "Hinzufuegen", servers: "Meine Server", premium: "Premium",
+      home: "Startseite", add: "Hinzufügen", servers: "Meine Server", premium: "Premium",
       terms: "Nutzungsbedingungen", privacy: "Datenschutz", logout: "Abmelden", login: "Mit Discord anmelden",
-      heroTitle: "Das modernste Ticket-System fuer Discord",
-      heroDesc: "Resolvo Tool verwaltet deine Support-Anfragen elegant. Mit interaktivem Panel, automatischen Transkripten, KI-gestuetzter Ticket-Klassifizierung und intelligentem FAQ-System.",
-      addBot: "Bot zu Discord hinzufuegen", discoverPremium: "Premium entdecken",
+      heroTitle: "Das modernste Ticket-System für Discord",
+      heroDesc: "Resolvo Tool verwaltet deine Support-Anfragen elegant. Mit interaktivem Panel, automatischen Transkripten, KI-gestützter Ticket-Klassifizierung und intelligentem FAQ-System.",
+      addBot: "Bot zu Discord hinzufügen", discoverPremium: "Premium entdecken",
       serversTitle: "Meine Server", serversDesc: "Server, auf denen Resolvo Tool installiert ist.",
       noServers: "Keine Server gefunden", noServersDesc: "Der Bot ist noch auf keinem deiner Server installiert.",
       premiumTitle: "Resolvo Tool Premium", premiumDesc: "Schalte alle Features frei.",
@@ -27,21 +27,21 @@ import { Router } from "express";
       panelActive: "Panel aktiv", panelInactive: "Panel nicht konfiguriert",
       openTickets: "Offene Tickets", closedTickets: "Geschlossen",
       configure: "Konfigurieren", back: "Zurueck", save: "Speichern",
-      configTitle: "Server-Konfiguration", configDesc: "Passe das Ticket-System fuer diesen Server an.",
+      configTitle: "Server-Konfiguration", configDesc: "Passe das Ticket-System für diesen Server an.",
       panelChannel: "Panel-Channel", ticketCategory: "Ticket-Kategorie",
       transcriptChannel: "Transkript-Channel", supportRole: "Support-Rolle",
       buttonText: "Button-Text", buttonColor: "Button-Farbe",
       embedColor: "Embed-Farbe", embedTitle: "Embed-Titel", embedDesc: "Embed-Beschreibung",
-      ratingSystem: "Bewertungssystem", ratingEnabled: "Bewertungen nach Ticket-Schlieszen aktivieren",
+      ratingSystem: "Bewertungssystem", ratingEnabled: "Bewertungen nach Ticket-Schließen aktivieren",
       aiSystem: "KI-Ticket-Klassifizierung", aiEnabled: "Automatische KI-Priorisierung aktivieren",
-      aiExplain: "Die KI analysiert eingehende Tickets und setzt automatisch die Prioritaet (Niedrig / Mittel / Hoch / Kritisch) basierend auf dem Inhalt.",
+      aiExplain: "Die KI analysiert eingehende Tickets und setzt automatisch die Priorität (Niedrig / Mittel / Hoch / Kritisch) basierend auf dem Inhalt.",
       lang: "Sprache", liveServers: "aktive Server", liveInstalls: "Installationen",
       featureTags: "Ticket-Tags", featureTagsDesc: "Farbcodierte Tags fuer jede Ticket-Kategorie",
       featureForms: "Formular-Tickets", featureFormsDesc: "Strukturierte Formulare statt Freitext",
       featureEscalation: "Auto-Eskalation", featureEscalationDesc: "Tickets werden nach Zeit automatisch eskaliert",
-      featureFAQ: "Smart FAQ", featureFAQDesc: "Bot beantwortet hauefige Fragen automatisch",
+      featureFAQ: "Smart FAQ", featureFAQDesc: "Bot beantwortet häufige Fragen automatisch",
       welcomeFirst: "Willkommen bei Resolvo Tool",
-      welcomeBack: "Willkommen zurueck",
+      welcomeBack: "Willkommen zurück",
     },
     en: {
       home: "Home", add: "Add Bot", servers: "My Servers", premium: "Premium",
@@ -646,17 +646,17 @@ import { Router } from "express";
         </div>
         <div class="content container">
           <form method="POST" action="/server/${guildId}/save" class="config-form">
-            <div class="form-group"><label>${txt("panelChannel")}</label><select name="panel_channel_id">${sel(config.panel_channel_id, textChannels, "-- waehlen --")}</select></div>
-            <div class="form-group"><label>${txt("ticketCategory")}</label><select name="ticket_category_id">${sel(config.ticket_category_id, categories, "-- waehlen --")}</select></div>
-            <div class="form-group"><label>${txt("transcriptChannel")}</label><select name="transcript_channel_id">${sel(config.transcript_channel_id, textChannels, "-- waehlen --")}</select></div>
-            <div class="form-group"><label>${txt("supportRole")}</label><select name="support_role_id">${sel(config.support_role_id, roles, "-- waehlen --")}</select></div>
+            <div class="form-group"><label>${txt("panelChannel")}</label><select name="panel_channel_id">${sel(config.panel_channel_id, textChannels, "-- wählen --")}</select></div>
+            <div class="form-group"><label>${txt("ticketCategory")}</label><select name="ticket_category_id">${sel(config.ticket_category_id, categories, "-- wählen --")}</select></div>
+            <div class="form-group"><label>${txt("transcriptChannel")}</label><select name="transcript_channel_id">${sel(config.transcript_channel_id, textChannels, "-- wählen --")}</select></div>
+            <div class="form-group"><label>${txt("supportRole")}</label><select name="support_role_id">${sel(config.support_role_id, roles, "-- wählen --")}</select></div>
             <div class="form-row">
               <div class="form-group"><label>${txt("buttonText")}</label><input type="text" name="button_text" value="${config.button_text || 'Ticket erstellen'}" maxlength="80"></div>
               <div class="form-group"><label>${txt("buttonColor")}</label>
                 <select name="button_color">
                   <option value="1" ${config.button_color === 1 ? "selected" : ""}>Blau (Primary)</option>
                   <option value="2" ${config.button_color === 2 ? "selected" : ""}>Grau (Secondary)</option>
-                  <option value="3" ${config.button_color === 3 ? "selected" : ""}>Gruen (Success)</option>
+                  <option value="3" ${config.button_color === 3 ? "selected" : ""}>Grün (Success)</option>
                   <option value="4" ${config.button_color === 4 ? "selected" : ""}>Rot (Danger)</option>
                 </select>
               </div>
@@ -731,8 +731,8 @@ import { Router } from "express";
               <li>${lang === "en" ? "Staff leaderboard & ratings" : "Staff-Leaderboard & Bewertungen"}</li>
               <li>${lang === "en" ? "Ticket tags & color coding" : "Ticket-Tags & Farbcodierung"}</li>
               <li>${lang === "en" ? "Auto-escalation & smart FAQ" : "Auto-Eskalation & Smart FAQ"}</li>
-              <li>${lang === "en" ? "Priority support" : "Priorisierte Unterstuetzung"}</li>
-              <li>${lang === "en" ? "Early access to new features" : "Frueher Zugang zu neuen Features"}</li>
+              <li>${lang === "en" ? "Priority support" : "Priorisierte Unterstützung"}</li>
+              <li>${lang === "en" ? "Early access to new features" : "Früher Zugang zu neuen Features"}</li>
             </ul>
             <p style="color:${COLORS.textMuted};font-size:.78rem;margin:16px 0;">${txt("premiumCmd")}</p>
             <a href="/servers" class="btn btn-primary" style="width:100%;justify-content:center;">${txt("toServers")}</a>
@@ -786,12 +786,12 @@ import { Router } from "express";
           <div class="content container">
             <p class="subtitle" style="color:${COLORS.textMuted};margin-bottom:28px;font-size:.82rem;">Zuletzt aktualisiert: ${new Date().toLocaleDateString("de-DE")}</p>
             <h2>1. Geltungsbereich</h2><p>Diese Nutzungsbedingungen gelten fuer die Nutzung des Discord-Bots "Resolvo Tool" sowie des zugehoerigen Web-Dashboards.</p>
-            <h2>2. Nutzung des Dienstes</h2><p>Resolvo Tool darf ausschliesslich fuer legale Zwecke und in Uebereinstimmung mit den Discord-Nutzungsbedingungen verwendet werden.</p>
+            <h2>2. Nutzung des Dienstes</h2><p>Resolvo Tool darf ausschliesslich fuer legale Zwecke und in Übereinstimmung mit den Discord-Nutzungsbedingungen verwendet werden.</p>
             <h2>3. Premium-Abonnement</h2><p>Das Premium-Upgrade wird fuer eine einmalige Zahlung angeboten und gewaehrt dauerhaften Zugang.</p>
             <h2>4. Datenspeicherung</h2><p>Wir speichern Discord-Nutzer-IDs, Server-IDs und Ticket-Inhalte zur Bereitstellung des Dienstes.</p>
-            <h2>5. Verfuegbarkeit</h2><p>Wir bemuehen uns um eine hohe Verfuegbarkeit, koennen jedoch keine 100%ige Verfuegbarkeit garantieren.</p>
+            <h2>5. Verfuegbarkeit</h2><p>Wir bemuehen uns um eine hohe Verfuegbarkeit, können jedoch keine 100%ige Verfuegbarkeit garantieren.</p>
             <h2>6. Haftungsbeschraenkung</h2><p>Resolvo Tool haftet nicht fuer Schaeden, die durch die Nutzung oder Nicht-Nutzung des Dienstes entstehen.</p>
-            <h2>7. Kontakt</h2><p>Bei Fragen erreichst du uns ueber unseren Discord-Support.</p>
+            <h2>7. Kontakt</h2><p>Bei Fragen erreichst du uns über unseren Discord-Support.</p>
           </div>
         `, { activeNav: "terms", lang }));
       }
@@ -816,17 +816,17 @@ import { Router } from "express";
           </div>
         `, { activeNav: "privacy", lang }));
       } else {
-        res.send(layout("Datenschutzerklaerung", `
-          <div class="page-header"><h1>Datenschutzerklaerung</h1></div>
+        res.send(layout("Datenschutzerklärung", `
+          <div class="page-header"><h1>Datenschutzerklärung</h1></div>
           <div class="content container">
             <p class="subtitle" style="color:${COLORS.textMuted};margin-bottom:28px;font-size:.82rem;">Zuletzt aktualisiert: ${new Date().toLocaleDateString("de-DE")}</p>
             <h2>1. Verantwortlicher</h2><p>Verantwortlich fuer die Datenverarbeitung ist der Betreiber von Resolvo Tool.</p>
             <h2>2. Welche Daten wir speichern</h2><ul><li>Discord Nutzer-ID und Nutzername</li><li>Discord Server-ID und Servername</li><li>Ticket-Inhalte und Nachrichten</li><li>Bewertungen und Zeitstempel</li><li>Zahlungsstatus (keine Zahlungsdaten)</li></ul>
             <h2>3. Zweck</h2><p>Die gespeicherten Daten werden ausschliesslich zur Bereitstellung des Ticket-Systems verwendet.</p>
-            <h2>4. Drittanbieter</h2><p><strong>Stripe:</strong> Zahlungsabwicklung.</p><p><strong>Discord:</strong> Nutzerdaten ueber die Discord API.</p>
+            <h2>4. Drittanbieter</h2><p><strong>Stripe:</strong> Zahlungsabwicklung.</p><p><strong>Discord:</strong> Nutzerdaten über die Discord API.</p>
             <h2>5. Datenloeschung</h2><p>Du kannst jederzeit die Loeschung deiner Daten beantragen.</p>
             <h2>6. Deine Rechte</h2><ul><li>Recht auf Auskunft</li><li>Recht auf Berichtigung und Loeschung</li><li>Recht auf Einschraenkung</li></ul>
-            <h2>7. Datensicherheit</h2><p>Alle Daten werden verschluesselt uebertragen (HTTPS) und in einer SQLite-Datenbank gespeichert.</p>
+            <h2>7. Datensicherheit</h2><p>Alle Daten werden verschluesselt übertragen (HTTPS) und in einer SQLite-Datenbank gespeichert.</p>
           </div>
         `, { activeNav: "privacy", lang }));
       }
