@@ -988,43 +988,189 @@ import { Router } from "express";
       // --- API: Support Chat ---
 
     router.post("/api/chat", async (req, res) => {
-        const { message } = req.body;
-        if (!message || typeof message !== "string") {
-          return res.status(400).json({ error: "Message required" });
-        }
-        const lower = message.toLowerCase();
-        let reply = "";
-        if (lower.includes("ticket")) {
-          reply = "Du kannst ein Ticket mit /ticket in deinem Server erstellen. Der Bot erstellt dann automatisch einen privaten Kanal.";
-        } else if (lower.includes("premium") || lower.includes("preis")) {
-          reply = "Premium kostet einmalig 5,99 EUR und schaltet erweiterte Statistiken, unbegrenzte Kategorien und KI-Klassifizierung frei.";
-        } else if (lower.includes("panel") || lower.includes("konfigur")) {
-          reply = "Gehe auf resolvo-tool-production.up.railway.app, melde dich mit Discord an und wähle deinen Server aus, um das Panel zu konfigurieren.";
-        } else if (lower.includes("help") || lower.includes("hilfe") || lower.includes("befehl")) {
-          reply = "Verfügbare Befehle: /ticket, /close, /add, /remove, /category, /faq, /premium, /help, /dashboard.";
-        } else if (lower.includes("invite") || lower.includes("einladen")) {
-          reply = "Lade den Bot hier ein: https://discord.com/oauth2/authorize?client_id=1508500695110647839&permissions=8&integration_type=0&scope=applications.commands+bot";
-        } else if (lower.includes("faq")) {
-          reply = "Das Smart-FAQ-System beantwortet häufige Fragen automatisch. Du kannst Einträge mit /faq add hinzufügen.";
-        } else if (lower.includes("ki") || lower.includes("ai")) {
-          reply = "Die KI-Klassifizierung analysiert eingehende Tickets und setzt automatisch Prioritäten (Niedrig, Mittel, Hoch, Kritisch).";
-        } else if (lower.includes("email") || lower.includes("kontakt")) {
-          reply = "Du kannst uns über das Support-Panel auf der Website kontaktieren: resolvo-tool-production.up.railway.app/support";
-        } else {
-          reply = "Danke für deine Nachricht! Für spezifische Fragen empfehle ich das Support-Panel auf unserer Website oder die Befehle /help und /dashboard im Discord.";
-        }
-        res.json({ reply });
-      });
+          const { message, lang: reqLang, history } = req.body;
+          if (!message || typeof message !== "string") {
+            return res.status(400).json({ error: "Message required" });
+          }
+          const lower = message.toLowerCase().trim();
+          const isEn = reqLang === "en";
 
-      // --- API: Contact Form ---
+          // --- knowledge base ---
+          const rules = [
+            // Greetings
+            { match: w => ["hallo","hi","hey","guten tag","guten morgen","guten abend","moin","servus","howdy","hello","good morning","good afternoon"].some(g => w.includes(g)),
+              de: "Hallo! Ich bin der Resolvo Tool Support-Bot. Wie kann ich dir helfen? Du kannst mich z.B. nach Tickets, Befehlen, dem Panel oder Premium fragen.",
+              en: "Hi there! I'm the Resolvo Tool support bot. How can I help? You can ask me about tickets, commands, the panel, premium, and more." },
 
-    router.post("/api/contact", async (req, res) => {
-        const { name, email, issue } = req.body;
-        if (!name || !email || !issue) {
-          return res.status(400).json({ error: "All fields required" });
-        }
-        console.log("[Contact Form] From: " + name + " <" + email + "> - " + issue.substring(0, 100));
-        res.json({ success: true, message: "Message received" });
-      });
+            // Ticket erstellen / create
+            { match: w => (w.includes("ticket") && (w.includes("erstell") || w.includes("öffn") || w.includes("neu") || w.includes("create") || w.includes("open") || w.includes("new") || w.includes("start"))),
+              de: "Um ein Ticket zu erstellen: Gehe in deinen Discord-Server → klicke auf das Resolvo-Panel → wähle eine Kategorie → das Ticket-Kanal wird automatisch erstellt. Alternativ: /ticket create in einem erlaubten Kanal eingeben.",
+              en: "To create a ticket: Go to your Discord server → click the Resolvo panel → choose a category → your private ticket channel is created automatically. Alternatively type /ticket create in an allowed channel." },
 
+            // Ticket schließen / close
+            { match: w => w.includes("ticket") && (w.includes("schließ") || w.includes("close") || w.includes("zumach") || w.includes("beend")),
+              de: "Ein Ticket schließt du mit dem Befehl /ticket close im Ticket-Kanal, oder über den Schließen-Button im Kanal. Das Ticket wird archiviert und ein Transkript erstellt.",
+              en: "Close a ticket using /ticket close in the ticket channel, or click the close button. The ticket gets archived and a transcript is generated." },
+
+            // Ticket hinzufügen / add user
+            { match: w => w.includes("ticket") && (w.includes("hinzu") || w.includes("add") || w.includes("user") || w.includes("nutzer") || w.includes("person")),
+              de: "Mit /ticket add @Nutzer kannst du eine weitere Person zum Ticket-Kanal hinzufügen. Nur Staff-Mitglieder können das tun.",
+              en: "Use /ticket add @user to add another person to the ticket channel. Only staff members can do this." },
+
+            // Ticket entfernen / remove
+            { match: w => w.includes("ticket") && (w.includes("entfern") || w.includes("remove") || w.includes("raus") || w.includes("kick")),
+              de: "Mit /ticket remove @Nutzer kannst du eine Person aus dem Ticket-Kanal entfernen.",
+              en: "Use /ticket remove @user to remove a person from the ticket channel." },
+
+            // Allgemein Ticket
+            { match: w => w.includes("ticket") && !w.includes("kategorie") && !w.includes("category"),
+              de: "Resolvo Tool bietet ein vollständiges Ticket-System: erstellen, schließen, Nutzer hinzufügen/entfernen, Kategorien, automatische Transkripte und mehr. Was möchtest du genauer wissen?",
+              en: "Resolvo Tool offers a complete ticket system: create, close, add/remove users, categories, automatic transcripts and more. What would you like to know more about?" },
+
+            // Panel einrichten / setup
+            { match: w => w.includes("panel") || w.includes("setup") || w.includes("einricht") || w.includes("konfigur") || w.includes("config") || w.includes("installier"),
+              de: "Panel einrichten in 3 Schritten:\n1. Bot einladen (resolvo-tool-production.up.railway.app/add)\n2. Im Dashboard anmelden und Server auswählen\n3. /panel ausführen → Schaltfläche wird im gewählten Kanal gepostet\n\nDanach können Mitglieder Tickets über das Panel öffnen.",
+              en: "Set up the panel in 3 steps:\n1. Invite the bot (resolvo-tool-production.up.railway.app/add)\n2. Log in at the dashboard and select your server\n3. Run /panel → button is posted in your chosen channel\n\nMembers can then open tickets via the panel." },
+
+            // Dashboard
+            { match: w => w.includes("dashboard") || w.includes("webseite") || w.includes("website") || w.includes("web panel") || w.includes("online"),
+              de: "Das Web-Dashboard findest du unter resolvo-tool-production.up.railway.app — melde dich mit Discord an, wähle deinen Server und konfiguriere alles komfortabel im Browser.",
+              en: "Find the web dashboard at resolvo-tool-production.up.railway.app — sign in with Discord, select your server and configure everything comfortably in your browser." },
+
+            // Kategorie
+            { match: w => w.includes("kategorie") || w.includes("category") || w.includes("kategorien"),
+              de: "Ticket-Kategorien verwaltest du mit:\n• /category add [Name] — neue Kategorie erstellen\n• /category list — alle Kategorien anzeigen\n• /category remove [Name] — Kategorie löschen\n\nMit Premium: unbegrenzte Kategorien.",
+              en: "Manage ticket categories with:\n• /category add [name] — create a new category\n• /category list — show all categories\n• /category remove [name] — delete a category\n\nWith Premium: unlimited categories." },
+
+            // FAQ
+            { match: w => w.includes("faq") || w.includes("häufig") || w.includes("frequent") || w.includes("auto") && w.includes("antwort"),
+              de: "Das FAQ-System antwortet automatisch auf häufige Fragen:\n• /faq add [Frage] [Antwort] — FAQ-Eintrag hinzufügen\n• /faq list — alle Einträge anzeigen\n\nSobald ein Ticket-Text einem FAQ-Eintrag ähnelt, antwortet der Bot automatisch.",
+              en: "The FAQ system automatically answers common questions:\n• /faq add [question] [answer] — add FAQ entry\n• /faq list — show all entries\n\nWhen a ticket matches a FAQ entry, the bot replies automatically." },
+
+            // Statistiken / Stats
+            { match: w => w.includes("stat") || w.includes("zahlen") || w.includes("numbers") || w.includes("anzahl") || w.includes("count"),
+              de: "Deine Server-Statistiken siehst du mit /stats oder im Web-Dashboard. Angezeigt werden: offene Tickets, geschlossene Tickets, Tickets diesen Monat und die Ø Bewertung deines Supports.",
+              en: "View your server statistics with /stats or in the web dashboard. It shows: open tickets, closed tickets, tickets this month and your average support rating." },
+
+            // Transkript / Transcript
+            { match: w => w.includes("transkript") || w.includes("transcript") || w.includes("protokoll") || w.includes("log") || w.includes("archiv"),
+              de: "Wenn ein Ticket geschlossen wird, erstellt Resolvo Tool automatisch ein vollständiges Transkript des Gesprächs und sendet es an den konfigurierten Log-Kanal.",
+              en: "When a ticket is closed, Resolvo Tool automatically creates a complete transcript of the conversation and sends it to the configured log channel." },
+
+            // Eskalation / Escalation
+            { match: w => w.includes("eskalat") || w.includes("escalat") || w.includes("dringend") || w.includes("urgent") || w.includes("priorität") || w.includes("priority"),
+              de: "Resolvo Tool unterstützt automatische Eskalation: Tickets können als dringend markiert werden und erhalten dann eine höhere Priorität (Niedrig / Mittel / Hoch / Kritisch). Staff wird benachrichtigt.",
+              en: "Resolvo Tool supports automatic escalation: tickets can be marked as urgent and receive higher priority (Low / Medium / High / Critical). Staff gets notified." },
+
+            // Befehle / Commands
+            { match: w => w.includes("befehl") || w.includes("command") || w.includes("hilfe") || w.includes("help") || w.includes("übersicht") || w.includes("liste") || w.includes("list"),
+              de: "Alle verfügbaren Befehle:\n• /ticket create — Ticket erstellen\n• /ticket close — Ticket schließen\n• /ticket add @user — Nutzer hinzufügen\n• /ticket remove @user — Nutzer entfernen\n• /panel — Panel-Button posten\n• /category add/list/remove — Kategorien verwalten\n• /faq add/list — FAQ verwalten\n• /stats — Statistiken\n• /premium — Premium-Infos\n• /help — Diese Übersicht\n• /dashboard — Dashboard-Link",
+              en: "All available commands:\n• /ticket create — create ticket\n• /ticket close — close ticket\n• /ticket add @user — add user\n• /ticket remove @user — remove user\n• /panel — post panel button\n• /category add/list/remove — manage categories\n• /faq add/list — manage FAQ\n• /stats — statistics\n• /premium — premium info\n• /help — this overview\n• /dashboard — dashboard link" },
+
+            // Einladen / Invite / Bot hinzufügen
+            { match: w => w.includes("einlad") || w.includes("invite") || w.includes("hinzufüg") || w.includes("add bot") || w.includes("install"),
+              de: "Den Bot einladen: resolvo-tool-production.up.railway.app/add — oder direkt den Invite-Link nutzen. Du benötigst Admin-Rechte auf deinem Server.",
+              en: "Invite the bot at: resolvo-tool-production.up.railway.app/add — or use the direct invite link. You need admin permissions on your server." },
+
+            // Premium
+            { match: w => w.includes("premium") || w.includes("bezahl") || w.includes("pay") || w.includes("kauf") || w.includes("buy") || w.includes("preis") || w.includes("price") || w.includes("kost") || w.includes("cost"),
+              de: "Resolvo Tool Premium kostet einmalig 5,99 € (kein Abo!) und beinhaltet:\n✓ Unbegrenzte Ticket-Kategorien\n✓ Erweiterte Statistiken & Leaderboard\n✓ KI-Ticket-Klassifizierung\n✓ Prioritäts-Support\n\nJetzt upgraden: resolvo-tool-production.up.railway.app/premium",
+              en: "Resolvo Tool Premium costs a one-time €5.99 (no subscription!) and includes:\n✓ Unlimited ticket categories\n✓ Extended statistics & leaderboard\n✓ AI ticket classification\n✓ Priority support\n\nUpgrade now: resolvo-tool-production.up.railway.app/premium" },
+
+            // Anmelden / Login
+            { match: w => w.includes("anmeld") || w.includes("login") || w.includes("einlogg") || w.includes("discord") && w.includes("konto") || w.includes("account") || w.includes("sign in"),
+              de: "Melde dich im Dashboard mit Discord an (OAuth2). Klicke auf 'Mit Discord anmelden' — du wirst zu Discord weitergeleitet und danach automatisch zurückgeführt.",
+              en: "Sign in to the dashboard with Discord (OAuth2). Click 'Sign in with Discord' — you'll be redirected to Discord and back automatically." },
+
+            // Fehler / Error / Bug
+            { match: w => w.includes("fehler") || w.includes("error") || w.includes("bug") || w.includes("funktionie") || w.includes("klappt") || w.includes("problem") || w.includes("geht nicht") || w.includes("doesn't work") || w.includes("not working"),
+              de: "Tut mir leid, dass du ein Problem hast! Um dir besser helfen zu können: Beschreibe bitte genau, was nicht funktioniert. Passiert der Fehler im Discord oder im Dashboard? Hast du eine Fehlermeldung?",
+              en: "Sorry you're having an issue! To help you better: please describe exactly what's not working. Does the error happen in Discord or the dashboard? Is there an error message?" },
+
+            // Berechtigungen / Permissions
+            { match: w => w.includes("berechtigung") || w.includes("permission") || w.includes("rechte") || w.includes("admin") || w.includes("role") || w.includes("rolle"),
+              de: "Für Resolvo Tool benötigt der Bot 'Administrator'-Rechte (oder mindestens: Kanäle verwalten, Nachrichten senden, Einbettungen senden). Stelle sicher, dass die Bot-Rolle über den Ticket-Kategorien liegt.",
+              en: "Resolvo Tool needs 'Administrator' permissions (or at minimum: manage channels, send messages, send embeds). Make sure the bot role is above the ticket category channels." },
+
+            // Danke
+            { match: w => ["danke","dankeschön","danke schön","thx","thanks","thank you","merci","super","toll","gerne"].some(g => w.includes(g)),
+              de: "Gern! Wenn du noch weitere Fragen hast, bin ich hier. Viel Spaß mit Resolvo Tool! 🎉",
+              en: "You're welcome! If you have more questions, I'm here. Enjoy Resolvo Tool! 🎉" },
+          ];
+
+          let reply = "";
+          let canHelp = true;
+
+          for (const rule of rules) {
+            if (rule.match(lower)) {
+              reply = isEn ? rule.en : rule.de;
+              break;
+            }
+          }
+
+          if (!reply) {
+            canHelp = false;
+            reply = isEn
+              ? "I'm not sure I understood your question. Could you rephrase it? Or feel free to contact our team directly using the form below — we'll get back to you quickly."
+              : "Ich bin mir nicht sicher, ob ich deine Frage richtig verstanden habe. Kannst du sie anders formulieren? Du kannst uns auch direkt über das Kontaktformular erreichen — wir antworten schnell.";
+          }
+
+          res.json({ reply, canHelp });
+        });
+
+        // --- API: Contact Form (sends real email via nodemailer) ---
+
+      router.post("/api/contact", async (req, res) => {
+          const { name, email, issue } = req.body;
+          if (!name || !email || !issue) {
+            return res.status(400).json({ error: "All fields required" });
+          }
+
+          const CONTACT_EMAIL = "resolvotool@gmail.com";
+          const smtpUser = process.env.SMTP_USER;
+          const smtpPass = process.env.SMTP_PASS;
+
+          if (!smtpUser || !smtpPass) {
+            // Fallback: log to console if SMTP not configured
+            console.log(`[Contact] ${name} <${email}>: ${issue.substring(0, 200)}`);
+            return res.json({ success: true });
+          }
+
+          try {
+            const nodemailer = (await import("nodemailer")).default;
+            const transporter = nodemailer.createTransport({
+              service: "gmail",
+              auth: { user: smtpUser, pass: smtpPass },
+            });
+
+            await transporter.sendMail({
+              from: `"Resolvo Tool Support" <${smtpUser}>`,
+              to: CONTACT_EMAIL,
+              replyTo: email,
+              subject: `[Resolvo Support] Neue Anfrage von ${name}`,
+              html: `
+                <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+                  <div style="background:#0b0f1a;padding:24px;border-radius:12px 12px 0 0;">
+                    <h2 style="color:#4f8cff;margin:0;font-size:1.2rem;">📬 Neue Support-Anfrage</h2>
+                  </div>
+                  <div style="background:#12192a;padding:24px;border-radius:0 0 12px 12px;border:1px solid #1e2d4d;border-top:none;">
+                    <table style="width:100%;border-collapse:collapse;">
+                      <tr><td style="color:#8aa2c9;padding:8px 0;font-size:.85rem;width:100px;">Name</td><td style="color:#e8ecf4;font-weight:600;">${name}</td></tr>
+                      <tr><td style="color:#8aa2c9;padding:8px 0;font-size:.85rem;">E-Mail</td><td style="color:#4f8cff;"><a href="mailto:${email}" style="color:#4f8cff;">${email}</a></td></tr>
+                    </table>
+                    <hr style="border:1px solid #1e2d4d;margin:16px 0;">
+                    <p style="color:#8aa2c9;font-size:.82rem;margin:0 0 8px;">Nachricht:</p>
+                    <p style="color:#e8ecf4;white-space:pre-wrap;margin:0;">${issue}</p>
+                  </div>
+                </div>
+              `,
+            });
+
+            res.json({ success: true });
+          } catch (err) {
+            console.error("[Contact] Email send error:", err.message);
+            // Still return success to user — don't expose SMTP errors
+            res.json({ success: true });
+          }
+        });
       export default router;
