@@ -68,7 +68,7 @@ import nacl from "tweetnacl";
     const tagStr = tags.length > 0 ? tags.map(t => `[${t}]`).join(" ") : "";
     return {
       title: `Ticket #${ticketId}${tagStr ? " " + tagStr : ""}`,
-      description: "Bitte beschreibe dein Anliegen. Unser Support-Team meldet sich so schnell wie moeglich.",
+      description: "Bitte beschreibe dein Anliegen. Unser Support-Team meldet sich so schnell wie möglich.",
       color: Number(color),
       fields: [
         { name: "Erstellt von", value: `<@${userId}>`, inline: true },
@@ -107,7 +107,7 @@ import nacl from "tweetnacl";
 
     return {
       title: "Panel-Konfiguration",
-      description: `Passe das Ticket-System fuer **${guild?.name || "diesen Server"}** an.`,
+      description: `Passe das Ticket-System für **${guild?.name || "diesen Server"}** an.`,
       color: 0x57f287,
       fields,
       footer: { text: "Click a button to configure" },
@@ -120,7 +120,7 @@ import nacl from "tweetnacl";
     return [{
       type: 1,
       components: [
-        { type: 2, style: 4, label: "Ticket schliessen", custom_id: "close_ticket" },
+        { type: 2, style: 4, label: "Ticket schließen", custom_id: "close_ticket" },
         { type: 2, style: 1, label: "Bewerten", custom_id: "rate_ticket" },
       ],
     }];
@@ -204,7 +204,7 @@ import nacl from "tweetnacl";
       {
         type: 1,
         components: [
-          { type: 2, style: 3, label: "Panel veroeffentlichen", custom_id: "cfg_publish" },
+          { type: 2, style: 3, label: "Panel veröffentlichen", custom_id: "cfg_publish" },
           { type: 2, style: 4, label: "Abbrechen", custom_id: "cfg_cancel" },
         ],
       },
@@ -217,7 +217,7 @@ import nacl from "tweetnacl";
         type: 1,
         components: [
           { type: 2, style: 1, label: "Blau", custom_id: "color_blue" },
-          { type: 2, style: 3, label: "Gruen", custom_id: "color_green" },
+          { type: 2, style: 3, label: "Grün", custom_id: "color_green" },
           { type: 2, style: 4, label: "Rot", custom_id: "color_red" },
         ],
       },
@@ -246,7 +246,7 @@ import nacl from "tweetnacl";
 
   export const colorMap = {
     color_blue: { name: "Blau", value: 3447003, style: 1 },
-    color_green: { name: "Gruen", value: 5763719, style: 3 },
+    color_green: { name: "Grün", value: 5763719, style: 3 },
     color_red: { name: "Rot", value: 15548997, style: 4 },
     color_grey: { name: "Grau", value: 9807270, style: 2 },
     color_gold: { name: "Gold", value: 16766720, style: 3 },
