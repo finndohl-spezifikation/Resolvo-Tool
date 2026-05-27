@@ -42,6 +42,12 @@ export const commands = [
     .setName("premium")
     .setDescription("Informationen und Kauf von Resolvo Tool Premium"),
 ];
+  new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Lists all available commands (English)"),
+  new SlashCommandBuilder()
+    .setName("dashboard")
+    .setDescription("Get the link to the Resolvo Tool web dashboard"),
 
 // ── Gateway Startup ────────────────────────────────────────────────────────────────
 
@@ -230,6 +236,49 @@ async function handleSlashCommand(interaction) {
           description: `Schalte alle Premium-Features frei!\n\n**Was bekommst du:**\n\u2022 Erweiterte Statistiken\n\u2022 Unbegrenzte Ticket-Kategorien\n\u2022 Staff-Leaderboard\n\n**Preis:** Einmalig **5,99\u20ac** \u2014 dauerhafter Zugang!\n\n[Jetzt upgraden](${checkoutUrl})`,
           color: 0xffd700,
           footer: { text: "Resolvo Tool Premium" },
+
+    case "help": {
+      await interaction.reply({
+        embeds: [{
+          title: "Resolvo Tool - Command Help",
+          description: "Here are all available commands:",
+          color: 0x4f8cff,
+          fields: [
+            { name: "/ticket create", value: "Create a new support ticket", inline: true },
+            { name: "/ticket close", value: "Close the current ticket", inline: true },
+            { name: "/ticket add @user", value: "Add a user to the ticket", inline: true },
+            { name: "/ticket remove @user", value: "Remove a user from the ticket", inline: true },
+            { name: "/panel", value: "Configure the ticket panel (Admin)", inline: true },
+            { name: "/setup", value: "Show setup status", inline: true },
+            { name: "/stats", value: "Show server ticket statistics", inline: true },
+            { name: "/category add/list/remove", value: "Manage ticket categories", inline: true },
+            { name: "/faq add/list", value: "Manage FAQ entries", inline: true },
+            { name: "/premium", value: "Premium information and purchase", inline: true },
+            { name: "/help", value: "Show this help message", inline: true },
+            { name: "/dashboard", value: "Get the web dashboard link", inline: true },
+          ],
+          footer: { text: "Resolvo Tool - Use /dashboard for the web panel" },
+        }],
+        flags: 64,
+      });
+      break;
+    }
+
+    case "dashboard": {
+      const dashUrl = process.env.DASHBOARD_URL || "https://resolvo-tool-production.up.railway.app";
+      await interaction.reply({
+        embeds: [{
+          title: "Resolvo Tool Dashboard",
+          description: "Manage your server settings, view statistics, and configure the ticket panel here:
+
+**-> [Open Dashboard](" + dashUrl + ")**",
+          color: 0x5865f2,
+          footer: { text: "Resolvo Tool - resolvo-tool-production.up.railway.app" },
+        }],
+        flags: 64,
+      });
+      break;
+    }
         }],
         flags: 64,
       });
