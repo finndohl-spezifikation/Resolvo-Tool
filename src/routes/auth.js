@@ -187,17 +187,17 @@ import { Router } from "express";
       </style></head><body>
       <div class="box">
         <h1>Discord OAuth2 Setup</h1>
-        <p>Fuege diese URL in deiner Discord App als Redirect ein:</p>
+        <p>Füge diese URL in deiner Discord App als Redirect ein:</p>
         <div class="url" id="uri">${redirectUri}</div>
         <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('uri').innerText);this.innerText='Kopiert!';setTimeout(()=>this.innerText='URL kopieren',2000)">URL kopieren</button>
         <div class="step">
           <h3>Schritt 1: Discord Developer Portal</h3>
           <p>1. Gehe zu <a href="https://discord.com/developers/applications/${clientId}/oauth2" style="color:#2979ff" target="_blank">Discord Developer Portal</a></p>
-          <p>2. Fuege unter "Redirects" diese URL hinzu:</p>
+          <p>2. Füge unter "Redirects" diese URL hinzu:</p>
           <p><code>${redirectUri}</code></p>
         </div>
         <div class="step">
-          <h3>Schritt 2: Zurueck zum Dashboard</h3>
+          <h3>Schritt 2: Zurück zum Dashboard</h3>
           <p>Nach dem Speichern in Discord kannst du dich <a href="/auth/login" style="color:#2979ff">hier einloggen</a>.</p>
         </div>
         <p style="font-size:.8rem;color:#5a7099;margin-top:16px">Erkannte Domain: <code>${baseUrl}</code></p>
