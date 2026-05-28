@@ -1,7 +1,7 @@
 import { Router } from "express";
   import { getSession } from "./auth.js";
   import { getClient } from "../gateway.js";
-  import { getPanelConfig, getStats, upsertPanelConfig, getGuild, getGlobalTicketCount } from "../db.js";
+  import { getPanelConfig, getStats, upsertPanelConfig, getGuild, getGlobalTicketCount, getPanels, createPanel, updatePanel, deletePanel } from "../db.js";
 
   const router = Router();
 
@@ -330,6 +330,58 @@ import { Router } from "express";
     .toggle-switch:checked { background: ${COLORS.success}; }
     .toggle-switch:checked::after { transform: translateX(20px); background: #fff; }
 
+
+      /* ── Color Pickers ── */
+      .color-btn-group { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+      .color-btn-opt { display:none; }
+      .color-btn-label { display:flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px;
+        border:2px solid transparent; cursor:pointer; font-size:.85rem; font-weight:600;
+        transition:border-color .15s, transform .1s; user-select:none; }
+      .color-btn-label:hover { transform:scale(1.03); }
+      .color-btn-opt:checked + .color-btn-label { border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.15); }
+      .color-btn-dot { width:16px; height:16px; border-radius:50%; flex-shrink:0; }
+      .c-blurple .color-btn-label { background:rgba(88,101,242,.25); color:#9ba8f8; }
+      .c-blurple .color-btn-dot { background:#5865F2; }
+      .c-gray .color-btn-label { background:rgba(78,80,88,.35); color:#b0b3b8; }
+      .c-gray .color-btn-dot { background:#4E5058; }
+      .c-green .color-btn-label { background:rgba(87,242,135,.12); color:#57F287; }
+      .c-green .color-btn-dot { background:#57F287; }
+      .c-red .color-btn-label { background:rgba(237,66,69,.15); color:#ED4245; }
+      .c-red .color-btn-dot { background:#ED4245; }
+      .color-pick-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
+      .color-pick-native { width:46px; height:36px; padding:2px; border:none; border-radius:8px;
+        background:#1e2030; cursor:pointer; }
+      .color-pick-hex { flex:1; font-family:monospace; text-transform:uppercase; }
+      .multi-check-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+      .multi-check-item { display:flex; align-items:center; gap:7px; padding:7px 12px;
+        background:#1e2030; border:1.5px solid #2e3250; border-radius:8px; cursor:pointer;
+        font-size:.82rem; transition:border-color .15s, background .15s; }
+      .multi-check-item:hover, .multi-check-item.checked { border-color:#5865F2; background:#22264a; }
+      .multi-check-item input[type=checkbox] { width:15px; height:15px; accent-color:#5865F2; cursor:pointer; }
+      .real-check-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
+      .real-check-row input[type=checkbox] { width:17px; height:17px; accent-color:#5865F2; cursor:pointer; flex-shrink:0; }
+      .real-check-row label { cursor:pointer; font-size:.9rem; }
+      .section-card { border:1px solid #2e3250; border-radius:14px; padding:20px; margin-bottom:20px; }
+      .section-card h3 { color:#fff; font-size:.95rem; margin:0 0 4px; }
+      .section-card .section-desc { font-size:.78rem; color:#8b92c8; margin:0 0 14px; }
+      .star-opts { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+      .star-opt-inp { display:none; }
+      .star-opt-lbl { padding:6px 13px; border-radius:8px; border:2px solid #2e3250;
+        cursor:pointer; font-size:.82rem; color:#8b92c8; transition:all .15s; }
+      .star-opt-lbl:hover { border-color:#5865F2; color:#9ba8f8; }
+      .star-opt-inp:checked + .star-opt-lbl { border-color:#5865F2; background:#22264a; color:#fff; }
+      .panel-card { border:1px solid #2e3250; border-radius:12px; padding:16px; margin-bottom:12px; }
+      .panel-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+      .panel-card-title { font-weight:700; font-size:.9rem; color:#fff; }
+      .panel-card-body { margin-top:14px; }
+      .btn-icon { background:none; border:1.5px solid #2e3250; border-radius:8px; padding:5px 10px;
+        cursor:pointer; color:#8b92c8; font-size:.78rem; transition:all .15s; }
+      .btn-icon:hover { border-color:#ED4245; color:#ED4245; }
+      .btn-add-panel { display:inline-flex; align-items:center; gap:6px; padding:9px 18px;
+        border-radius:10px; border:2px dashed #2e3250; background:none; color:#8b92c8;
+        cursor:pointer; font-size:.84rem; transition:all .2s; margin-top:4px; }
+      .btn-add-panel:hover { border-color:#5865F2; color:#9ba8f8; background:#1a1d3a; }
+  
     .badge { display: inline-block; padding: 3px 10px; border-radius: 6px;
       font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
     }
@@ -652,94 +704,247 @@ import { Router } from "express";
       }
 
       const config = getPanelConfig(guildId) || {};
-      const stats = getStats(guildId);
+        const stats = getStats(guildId);
+        let panels = [];
+        try { panels = getPanels(guildId); } catch(_) {}
+        const embedHex = (n) => ((n || 3447003) >>> 0).toString(16).padStart(6, '0').toUpperCase();
+        const selectedRoleIds = (() => { try { return JSON.parse(config.support_role_ids || '[]'); } catch(_) { return config.support_role_id ? [config.support_role_id] : []; } })();
 
-      const textChannels = guild.channels.cache.filter(c => c.type === 0).sort((a, b) => a.rawPosition - b.rawPosition).map(c => ({ id: c.id, name: c.name }));
-      const categories = guild.channels.cache.filter(c => c.type === 4).sort((a, b) => a.rawPosition - b.rawPosition).map(c => ({ id: c.id, name: c.name }));
-      const roles = guild.roles.cache.filter(r => !r.managed && r.name !== "@everyone").sort((a, b) => b.position - a.position).map(r => ({ id: r.id, name: r.name }));
+        const textChannels = guild.channels.cache.filter(c => c.type === 0).sort((a, b) => a.rawPosition - b.rawPosition).map(c => ({ id: c.id, name: c.name }));
+        const categories = guild.channels.cache.filter(c => c.type === 4).sort((a, b) => a.rawPosition - b.rawPosition).map(c => ({ id: c.id, name: c.name }));
+        const roles = guild.roles.cache.filter(r => !r.managed && r.name !== "@everyone").sort((a, b) => b.position - a.position).map(r => ({ id: r.id, name: r.name }));
 
-      const sel = (val, items, placeholder) => `<option value="">${placeholder}</option>` + items.map(i => `<option value="${i.id}" ${i.id === val ? "selected" : ""}>${i.name}</option>`).join("");
-      const icon = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null;
+        const sel = (val, items, placeholder) => `<option value="">${placeholder}</option>` + items.map(i => `<option value="${i.id}" ${i.id === val ? "selected" : ""}>${i.name}</option>`).join("");
+        const icon = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null;
 
-      res.send(layout(txt("configTitle"), `
-        <div class="page-header">
-          <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;">
-            <div style="width:48px;height:48px;border-radius:12px;background:${COLORS.accent};display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;font-weight:700;">
-              ${icon ? `<img src="${icon}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;">` : guild.name.charAt(0)}
+        const btnColorPicker = (val, prefix = '') => {
+          const c = parseInt(val) || 1;
+          return `<div class="color-btn-group">
+            <div class="c-blurple"><input class="color-btn-opt" type="radio" name="${prefix}button_color" id="${prefix}bc1" value="1" ${c===1?"checked":""}><label class="color-btn-label" for="${prefix}bc1"><span class="color-btn-dot"></span>Primär</label></div>
+            <div class="c-gray"><input class="color-btn-opt" type="radio" name="${prefix}button_color" id="${prefix}bc2" value="2" ${c===2?"checked":""}><label class="color-btn-label" for="${prefix}bc2"><span class="color-btn-dot"></span>Sekundär</label></div>
+            <div class="c-green"><input class="color-btn-opt" type="radio" name="${prefix}button_color" id="${prefix}bc3" value="3" ${c===3?"checked":""}><label class="color-btn-label" for="${prefix}bc3"><span class="color-btn-dot"></span>Grün</label></div>
+            <div class="c-red"><input class="color-btn-opt" type="radio" name="${prefix}button_color" id="${prefix}bc4" value="4" ${c===4?"checked":""}><label class="color-btn-label" for="${prefix}bc4"><span class="color-btn-dot"></span>Rot</label></div>
+          </div>`;
+        };
+        const embedColorPicker = (val, prefix = '') => {
+          const hex = embedHex(val);
+          return `<div class="color-pick-row">
+            <input type="color" class="color-pick-native" id="${prefix}ecp" value="#${hex}"
+              oninput="document.getElementById('${prefix}ech').value=this.value.slice(1).toUpperCase()">
+            <input type="text" id="${prefix}ech" name="${prefix}embed_color" value="${hex}" maxlength="6"
+              pattern="[0-9a-fA-F]{6}" class="color-pick-hex"
+              oninput="document.getElementById('${prefix}ecp').value='#'+this.value">
+          </div>`;
+        };
+
+        const panelHtml = panels.map((p, i) => {
+          const ph = embedHex(p.embed_color);
+          return `<div class="panel-card" id="pc${p.id}">
+            <div class="panel-card-header">
+              <span class="panel-card-title">📌 ${p.name || 'Panel '+(i+1)}</span>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="btn-icon" onclick="togglePanel(${p.id})">▼ Details</button>
+                <form method="POST" action="/server/${guildId}/panels/${p.id}/delete" style="margin:0;">
+                  <button type="submit" class="btn-icon" onclick="return confirm('Panel löschen?')">✕ Löschen</button>
+                </form>
+              </div>
             </div>
-            <div style="text-align:left;">
-              <h1 style="font-size:1.4rem;margin-bottom:2px;">${guild.name}</h1>
-              <p style="font-size:.8rem;margin:0;color:${COLORS.textMuted};">${txt("configDesc")}</p>
+            <div class="panel-card-body" id="pb${p.id}">
+              <form method="POST" action="/server/${guildId}/panels/${p.id}/update">
+                <div class="form-row">
+                  <div class="form-group"><label>Panel-Name</label><input type="text" name="name" value="${p.name}" maxlength="50"></div>
+                  <div class="form-group"><label>Panel-Channel</label><select name="channel_id">${sel(p.channel_id, textChannels, "-- wählen --")}</select></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Ticket-Kategorie</label><select name="ticket_category_id">${sel(p.ticket_category_id, categories, "-- wählen --")}</select></div>
+                </div>
+                <div class="form-group"><label>Button-Text</label><input type="text" name="button_text" value="${p.button_text || 'Ticket erstellen'}" maxlength="80"></div>
+                <div class="form-group"><label>Button-Farbe</label>${btnColorPicker(p.button_color, 'p'+p.id+'_')}</div>
+                <div class="form-group"><label>Embed-Farbe</label>${embedColorPicker(p.embed_color, 'p'+p.id+'_')}</div>
+                <div class="form-row">
+                  <div class="form-group"><label>Embed-Titel</label><input type="text" name="embed_title" value="${p.embed_title || 'Support'}" maxlength="100"></div>
+                </div>
+                <div class="form-group"><label>Embed-Beschreibung</label><textarea name="embed_description" maxlength="400">${p.embed_description || ''}</textarea></div>
+                <button type="submit" class="btn btn-primary" style="margin-top:10px;">Panel speichern</button>
+              </form>
             </div>
+          </div>`;
+        }).join('');
+
+        res.send(layout(txt("configTitle"), `
+          <div class="page-header">
+            <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:${COLORS.accent};display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;font-weight:700;">
+                ${icon ? `<img src="${icon}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;">` : guild.name.charAt(0)}
+              </div>
+              <div style="text-align:left;">
+                <h1 style="font-size:1.4rem;margin-bottom:2px;">${guild.name}</h1>
+                <p style="font-size:.8rem;margin:0;color:${COLORS.textMuted};">${txt("configDesc")}</p>
+              </div>
+            </div>
+            <p style="color:${COLORS.textMuted};font-size:.8rem;margin-top:6px;">
+              ${txt("openTickets")}: ${stats.open} · ${txt("closedTickets")}: ${stats.closed} · Total: ${stats.total} · Avg: ${stats.avgRating || "N/A"}
+            </p>
           </div>
-          <p style="color:${COLORS.textMuted};font-size:.8rem;margin-top:6px;">
-            ${txt("openTickets")}: ${stats.open} · ${txt("closedTickets")}: ${stats.closed} · Total: ${stats.total} · Avg: ${stats.avgRating || "N/A"}
-          </p>
-        </div>
-        <div class="content container">
-          <form method="POST" action="/server/${guildId}/save" class="config-form">
-            <div class="form-group"><label>${txt("panelChannel")}</label><select name="panel_channel_id">${sel(config.panel_channel_id, textChannels, "-- wählen --")}</select></div>
-            <div class="form-group"><label>${txt("ticketCategory")}</label><select name="ticket_category_id">${sel(config.ticket_category_id, categories, "-- wählen --")}</select></div>
-            <div class="form-group"><label>${txt("transcriptChannel")}</label><select name="transcript_channel_id">${sel(config.transcript_channel_id, textChannels, "-- wählen --")}</select></div>
-            <div class="form-group"><label>${txt("supportRole")}</label><select name="support_role_id">${sel(config.support_role_id, roles, "-- wählen --")}</select></div>
-            <div class="form-row">
-              <div class="form-group"><label>${txt("buttonText")}</label><input type="text" name="button_text" value="${config.button_text || 'Ticket erstellen'}" maxlength="80"></div>
-              <div class="form-group"><label>${txt("buttonColor")}</label>
-                <select name="button_color">
-                  <option value="1" ${config.button_color === 1 ? "selected" : ""}>Blau (Primary)</option>
-                  <option value="2" ${config.button_color === 2 ? "selected" : ""}>Grau (Secondary)</option>
-                  <option value="3" ${config.button_color === 3 ? "selected" : ""}>Grün (Success)</option>
-                  <option value="4" ${config.button_color === 4 ? "selected" : ""}>Rot (Danger)</option>
-                </select>
+          <div class="content container">
+
+            <!-- ── Haupt-Konfiguration ─────────────────────────── -->
+            <form method="POST" action="/server/${guildId}/save" class="config-form">
+
+              <div class="section-card">
+                <h3>⚙️ Allgemeine Einstellungen</h3>
+                <p class="section-desc">Kanal für Transkripte und Support-Rollen für alle Panels.</p>
+                <div class="form-group"><label>${txt("transcriptChannel")}</label><select name="transcript_channel_id">${sel(config.transcript_channel_id, textChannels, "-- wählen --")}</select></div>
+                <div class="form-group">
+                  <label>${txt("supportRole")} (Mehrfachauswahl)</label>
+                  <div class="multi-check-grid">
+                    ${roles.length ? roles.map(r => `
+                      <label class="multi-check-item${selectedRoleIds.includes(r.id) ? ' checked' : ''}">
+                        <input type="checkbox" name="support_role_ids" value="${r.id}" ${selectedRoleIds.includes(r.id) ? 'checked' : ''}
+                          onchange="this.closest('.multi-check-item').classList.toggle('checked',this.checked)">
+                        ${r.name}
+                      </label>
+                    `).join('') : '<p style="color:#8b92c8;font-size:.82rem;">Keine Rollen gefunden.</p>'}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="form-group"><label>${txt("embedColor")} (Hex, z.B. 5865F2)</label><input type="text" name="embed_color" value="${config.embed_color || '3447003'}" pattern="[0-9a-fA-F]{1,8}"></div>
-            <div class="form-group"><label>${txt("embedTitle")}</label><input type="text" name="embed_title" value="${config.embed_title || 'Support'}" maxlength="100"></div>
-            <div class="form-group"><label>${txt("embedDesc")}</label><textarea name="embed_description" maxlength="400">${config.embed_description || 'Klicke auf den Button um ein Ticket zu erstellen.'}</textarea></div>
-            <div style="border:1px solid ${COLORS.border};border-radius:12px;padding:18px;margin-bottom:20px;">
-              <h3 style="color:#fff;font-size:.95rem;margin-bottom:6px;">${txt("aiSystem")}</h3>
-              <p style="font-size:.78rem;color:${COLORS.textMuted};margin-bottom:14px;">${txt("aiExplain")}</p>
-              <div class="form-group toggle-row">
-                <input type="checkbox" class="toggle-switch" name="ai_enabled" id="ai_enabled" ${config.ai_enabled ? "checked" : ""}>
-                <label for="ai_enabled">${txt("aiEnabled")}</label>
+
+              <div class="section-card">
+                <h3>🤖 KI-Ticket-Klassifizierung</h3>
+                <p class="section-desc">Die KI analysiert eingehende Tickets und setzt automatisch die Priorität.</p>
+                <div class="real-check-row">
+                  <input type="checkbox" id="ai_enabled" name="ai_enabled" ${config.ai_enabled ? 'checked' : ''}>
+                  <label for="ai_enabled">${txt("aiEnabled")}</label>
+                </div>
               </div>
-            </div>
-            <div class="form-group toggle-row">
-              <input type="checkbox" class="toggle-switch" name="rating_enabled" id="rating_enabled" ${config.rating_enabled ? "checked" : ""}>
-              <label for="rating_enabled">${txt("ratingEnabled")}</label>
-            </div>
-            <div style="display:flex;gap:12px;margin-top:28px;">
-              <a href="/servers" class="btn btn-secondary">${txt("back")}</a>
-              <button type="submit" class="btn btn-success">${txt("save")}</button>
-            </div>
-          </form>
-        </div>
-      `, { session, activeNav: "servers", lang }));
-    });
 
-  router.post("/server/:guildId/save", (req, res) => {
-      const session = getSession(req);
-      if (!session) { res.redirect("/auth/login"); return; }
+              <div class="section-card">
+                <h3>⭐ Bewertungssystem</h3>
+                <p class="section-desc">Nutzer bewerten den Support nach dem Schließen eines Tickets.</p>
+                <div class="real-check-row">
+                  <input type="checkbox" id="rating_enabled" name="rating_enabled"
+                    ${config.rating_enabled ? 'checked' : ''} onchange="document.getElementById('rating_cfg').style.display=this.checked?'block':'none'">
+                  <label for="rating_enabled">${txt("ratingEnabled")}</label>
+                </div>
+                <div id="rating_cfg" style="margin-top:16px;${config.rating_enabled ? '' : 'display:none'}">
+                  <div class="form-group">
+                    <label>Bewertungsfrage (wird dem Nutzer angezeigt)</label>
+                    <input type="text" name="rating_question" maxlength="200"
+                      value="${config.rating_question || 'Wie zufrieden bist du mit der Bearbeitung deines Tickets?'}">
+                  </div>
+                  <div class="form-group">
+                    <label>Maximale Sternanzahl</label>
+                    <div class="star-opts">
+                      ${[3,4,5,6,7,8,9,10].map(n => {
+                        const cur = config.rating_max_stars || 5;
+                        return `<input class="star-opt-inp" type="radio" name="rating_max_stars" id="rs${n}" value="${n}" ${cur==n?'checked':''}><label class="star-opt-lbl" for="rs${n}">${'★'.repeat(Math.min(n,5))} ${n}</label>`;
+                      }).join('')}
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>DM-Nachricht an Nutzer beim Bewertungs-Request</label>
+                    <textarea name="rating_dm_message" maxlength="400">${config.rating_dm_message || ''}</textarea>
+                  </div>
+                  <div class="real-check-row">
+                    <input type="checkbox" id="rating_show" name="rating_show_in_channel" ${config.rating_show_in_channel ? 'checked' : ''}>
+                    <label for="rating_show">Bewertung im Ticket-Channel anzeigen</label>
+                  </div>
+                </div>
+              </div>
 
-      const guildId = req.params.guildId;
-      const body = req.body;
+              <div style="display:flex;gap:12px;margin-top:4px;">
+                <a href="/servers" class="btn btn-secondary">${txt("back")}</a>
+                <button type="submit" class="btn btn-success">${txt("save")}</button>
+              </div>
+            </form>
 
-      upsertPanelConfig(guildId, {
-        panel_channel_id: body.panel_channel_id || null,
-        ticket_category_id: body.ticket_category_id || null,
-        transcript_channel_id: body.transcript_channel_id || null,
-        support_role_id: body.support_role_id || null,
-        button_text: body.button_text || null,
-        button_color: body.button_color ? parseInt(body.button_color) : null,
-        embed_color: body.embed_color ? parseInt(body.embed_color, 16) : null,
-        embed_title: body.embed_title || null,
-        embed_description: body.embed_description || null,
-        rating_enabled: body.rating_enabled === "on" ? 1 : 0,
-        ai_enabled: body.ai_enabled === "on" ? 1 : 0,
+            <!-- ── Panels ─────────────────────────────────────── -->
+            <div style="margin-top:32px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div>
+                  <h2 style="color:#fff;font-size:1.1rem;margin:0 0 4px;">📋 Panels</h2>
+                  <p style="color:#8b92c8;font-size:.8rem;margin:0;">Erstelle mehrere Ticket-Panels in verschiedenen Kanälen.</p>
+                </div>
+              </div>
+              ${panelHtml || '<p style="color:#8b92c8;font-size:.84rem;margin-bottom:12px;">Noch keine Panels erstellt.</p>'}
+              <form method="POST" action="/server/${guildId}/panels/create">
+                <button type="submit" class="btn-add-panel">+ Neues Panel hinzufügen</button>
+              </form>
+            </div>
+
+          </div>
+          <script>
+            function togglePanel(id) {
+              const card = document.getElementById('pc'+id);
+              const body = document.getElementById('pb'+id);
+              if (body.style.display === 'block') { body.style.display='none'; } else { body.style.display='block'; }
+            }
+          </script>
+        `, { session, activeNav: "servers", lang }));
       });
 
-      res.redirect("/server/" + guildId);
-    });
+      router.post("/server/:guildId/save", (req, res) => {
+        const session = getSession(req);
+        if (!session) { res.redirect("/auth/login"); return; }
+        const guildId = req.params.guildId;
+        const body = req.body;
+        const roleIds = Array.isArray(body.support_role_ids)
+          ? body.support_role_ids
+          : body.support_role_ids ? [body.support_role_ids] : [];
+        upsertPanelConfig(guildId, {
+          transcript_channel_id: body.transcript_channel_id || null,
+          support_role_id: roleIds[0] || null,
+          support_role_ids: JSON.stringify(roleIds),
+          rating_enabled: body.rating_enabled === "on" ? 1 : 0,
+          rating_question: body.rating_question || null,
+          rating_max_stars: body.rating_max_stars ? parseInt(body.rating_max_stars) : 5,
+          rating_dm_message: body.rating_dm_message || null,
+          rating_show_in_channel: body.rating_show_in_channel === "on" ? 1 : 0,
+          ai_enabled: body.ai_enabled === "on" ? 1 : 0,
+        });
+        res.redirect("/server/" + guildId);
+      });
+
+      router.post("/server/:guildId/panels/create", (req, res) => {
+        const session = getSession(req);
+        if (!session) { res.redirect("/auth/login"); return; }
+        try {
+          createPanel(req.params.guildId, {
+            name: "Panel " + (Date.now() % 1000),
+            button_text: "Ticket erstellen",
+            embed_title: "Support",
+            embed_description: "Klicke auf den Button um ein Ticket zu erstellen.",
+          });
+        } catch(_) {}
+        res.redirect("/server/" + req.params.guildId);
+      });
+
+      router.post("/server/:guildId/panels/:panelId/update", (req, res) => {
+        const session = getSession(req);
+        if (!session) { res.redirect("/auth/login"); return; }
+        const body = req.body;
+        try {
+          updatePanel(parseInt(req.params.panelId), req.params.guildId, {
+            name: body.name || "Panel",
+            channel_id: body.channel_id || null,
+            ticket_category_id: body.ticket_category_id || null,
+            button_text: body.button_text || "Ticket erstellen",
+            button_color: body.button_color ? parseInt(body.button_color) : 1,
+            embed_color: body.embed_color ? parseInt(body.embed_color, 16) : 3447003,
+            embed_title: body.embed_title || "Support",
+            embed_description: body.embed_description || "",
+          });
+        } catch(_) {}
+        res.redirect("/server/" + req.params.guildId);
+      });
+
+      router.post("/server/:guildId/panels/:panelId/delete", (req, res) => {
+        const session = getSession(req);
+        if (!session) { res.redirect("/auth/login"); return; }
+        try { deletePanel(parseInt(req.params.panelId), req.params.guildId); } catch(_) {}
+        res.redirect("/server/" + req.params.guildId);
+      });
+
 
     // --- Premium ---
 
