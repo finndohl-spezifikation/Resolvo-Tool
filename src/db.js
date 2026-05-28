@@ -112,6 +112,7 @@ import Database from "better-sqlite3";
         transcript TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+          panel_id INTEGER,
       );
 
       CREATE TABLE IF NOT EXISTS ticket_messages (
@@ -174,6 +175,7 @@ import Database from "better-sqlite3";
     // ── panels table column migrations ────────────────────────────────────────
     const _addPCol = (col, def) => {
       try { db.prepare(`ALTER TABLE panels ADD COLUMN ${col} ${def}`).run(); } catch (_) {}
+try { db.exec("ALTER TABLE tickets ADD COLUMN panel_id INTEGER"); } catch(_) {}
     };
     _addPCol("open_message",                "TEXT DEFAULT ''");
     _addPCol("close_message",               "TEXT DEFAULT 'Dein Ticket wurde geschlossen.'");
@@ -328,11 +330,11 @@ import Database from "better-sqlite3";
 
   // ── Tickets ───────────────────────────────────────────────────────────────────
 
-  export function createTicket(guildId, userId, channelId, priority = "medium", categoryId = null, subject = null) {
+  export function createTicket(guildId, userId, channelId, priority = "medium", categoryId = null, subject = null, panelId = null) {
     const result = db.prepare(`
-      INSERT INTO tickets (guild_id, user_id, channel_id, status, priority, category_id, subject)
-      VALUES (?, ?, ?, 'open', ?, ?, ?)
-    `).run(guildId, userId, channelId, priority, categoryId, subject);
+      INSERT INTO tickets (guild_id, user_id, channel_id, status, priority, category_id, subject, panel_id)
+      VALUES (?, ?, ?, 'open', ?, ?, ?, ?)
+    `).run(guildId, userId, channelId, priority, categoryId, subject, panelId || null);
     return db.prepare("SELECT * FROM tickets WHERE id = ?").get(result.lastInsertRowid);
   }
 
