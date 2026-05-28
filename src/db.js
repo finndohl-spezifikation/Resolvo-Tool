@@ -75,6 +75,22 @@ import Database from "better-sqlite3";
           ticket_category_id TEXT,
           sort_order INTEGER DEFAULT 0,
           is_active INTEGER DEFAULT 1,
+          open_message TEXT DEFAULT '',
+          close_message TEXT DEFAULT 'Dein Ticket wurde geschlossen.',
+          close_button_text TEXT DEFAULT 'Ticket schließen',
+          close_button_color INTEGER DEFAULT 4,
+          who_can_close TEXT DEFAULT 'support',
+          ticket_roles TEXT DEFAULT '[]',
+          auto_close_enabled INTEGER DEFAULT 0,
+          auto_close_hours INTEGER DEFAULT 48,
+          auto_close_inactivity_hours INTEGER DEFAULT 0,
+          transcript_channel_id TEXT,
+          confirm_close_enabled INTEGER DEFAULT 0,
+          confirm_close_text TEXT DEFAULT 'Ja, schließen',
+          confirm_cancel_text TEXT DEFAULT 'Abbrechen',
+          rating_enabled INTEGER DEFAULT 1,
+          rating_question TEXT DEFAULT 'Wie zufrieden bist du mit dem Support?',
+          rating_max_stars INTEGER DEFAULT 5,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
   
@@ -155,6 +171,26 @@ import Database from "better-sqlite3";
     _addCol("rating_max_stars",      "INTEGER DEFAULT 5");
     _addCol("rating_dm_message",     "TEXT DEFAULT ''");
     _addCol("rating_show_in_channel","INTEGER DEFAULT 0");
+    // ── panels table column migrations ────────────────────────────────────────
+    const _addPCol = (col, def) => {
+      try { db.prepare(`ALTER TABLE panels ADD COLUMN ${col} ${def}`).run(); } catch (_) {}
+    };
+    _addPCol("open_message",                "TEXT DEFAULT ''");
+    _addPCol("close_message",               "TEXT DEFAULT 'Dein Ticket wurde geschlossen.'");
+    _addPCol("close_button_text",           "TEXT DEFAULT 'Ticket schließen'");
+    _addPCol("close_button_color",          "INTEGER DEFAULT 4");
+    _addPCol("who_can_close",               "TEXT DEFAULT 'support'");
+    _addPCol("ticket_roles",                "TEXT DEFAULT '[]'");
+    _addPCol("auto_close_enabled",          "INTEGER DEFAULT 0");
+    _addPCol("auto_close_hours",            "INTEGER DEFAULT 48");
+    _addPCol("auto_close_inactivity_hours", "INTEGER DEFAULT 0");
+    _addPCol("transcript_channel_id",       "TEXT");
+    _addPCol("confirm_close_enabled",       "INTEGER DEFAULT 0");
+    _addPCol("confirm_close_text",          "TEXT DEFAULT 'Ja, schließen'");
+    _addPCol("confirm_cancel_text",         "TEXT DEFAULT 'Abbrechen'");
+    _addPCol("rating_enabled",              "INTEGER DEFAULT 1");
+    _addPCol("rating_question",             "TEXT DEFAULT 'Wie zufrieden bist du mit dem Support?'");
+    _addPCol("rating_max_stars",            "INTEGER DEFAULT 5");
   
   export function upsertGuild(id, name) {
     db.prepare(`
@@ -218,7 +254,11 @@ import Database from "better-sqlite3";
     return db.prepare("SELECT * FROM panels WHERE guild_id = ? AND is_active = 1 ORDER BY sort_order, id").all(guildId);
   }
 
-  export function createPanel(guildId, fields) {
+  export function getPanel(id, guildId) {
+      return db.prepare("SELECT * FROM panels WHERE id = ? AND guild_id = ? AND is_active = 1").get(id, guildId);
+    }
+
+    export function createPanel(guildId, fields) {
     const cols = Object.keys(fields);
     const placeholders = cols.map(() => "?").join(", ");
     const res = db.prepare(`INSERT INTO panels (guild_id, ${cols.join(", ")}) VALUES (?, ${placeholders})`).run(guildId, ...Object.values(fields));
