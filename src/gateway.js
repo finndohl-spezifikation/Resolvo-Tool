@@ -443,15 +443,6 @@ async function handleButton(interaction) {
   }
 }
 
-  if (customId.startsWith("rate_")) {
-    const rating = parseInt(customId.split("_")[1]);
-    const ticket = getTicketByChannel(interaction.channelId);
-    if (ticket) addRating(ticket.id, rating, null);
-    await interaction.reply({ content: `Danke f\u00fcr deine Bewertung von **${rating}/5** \u2b50`, flags: 64 });
-    return;
-  }
-}
-
 // ── Select Menu Handlers ──────────────────────────────────────────────────────────
 
 async function handleChannelSelect(interaction) {
