@@ -133,15 +133,28 @@ import Database from "better-sqlite3";
   // ── Guilds ──────────────────────────────────────────────────────────────────
 
 
-    // ── Schema migrations (safe ALTER TABLE) ────────────────────────────────────
+    // ── Schema migrations — safe ALTER TABLE for all Railway DBs ───────────────
     const _addCol = (col, def) => {
       try { db.prepare(`ALTER TABLE panel_configs ADD COLUMN ${col} ${def}`).run(); } catch (_) {}
     };
-    _addCol("support_role_ids", "TEXT DEFAULT '[]'");
-    _addCol("rating_question", "TEXT DEFAULT 'Wie zufrieden bist du mit der Bearbeitung?'");
-    _addCol("rating_max_stars", "INTEGER DEFAULT 5");
-    _addCol("rating_dm_message", "TEXT DEFAULT ''");
-    _addCol("rating_show_in_channel", "INTEGER DEFAULT 0");
+    // Core columns that may be missing from old Railway SQLite instances
+    _addCol("button_color",          "INTEGER DEFAULT 1");
+    _addCol("button_text",           "TEXT DEFAULT 'Ticket erstellen'");
+    _addCol("embed_color",           "INTEGER DEFAULT 3447003");
+    _addCol("embed_title",           "TEXT DEFAULT 'Support'");
+    _addCol("embed_description",     "TEXT DEFAULT 'Klicke auf den Button um ein Ticket zu erstellen.'");
+    _addCol("rating_enabled",        "INTEGER DEFAULT 1");
+    _addCol("ai_enabled",            "INTEGER DEFAULT 0");
+    _addCol("escalation_hours",      "INTEGER DEFAULT 24");
+    _addCol("faq_enabled",           "INTEGER DEFAULT 1");
+    _addCol("forms_enabled",         "INTEGER DEFAULT 0");
+    _addCol("escalated",             "INTEGER DEFAULT 0");
+    // New columns added in latest release
+    _addCol("support_role_ids",      "TEXT DEFAULT '[]'");
+    _addCol("rating_question",       "TEXT DEFAULT 'Wie zufrieden bist du mit der Bearbeitung?'");
+    _addCol("rating_max_stars",      "INTEGER DEFAULT 5");
+    _addCol("rating_dm_message",     "TEXT DEFAULT ''");
+    _addCol("rating_show_in_channel","INTEGER DEFAULT 0");
   
   export function upsertGuild(id, name) {
     db.prepare(`
