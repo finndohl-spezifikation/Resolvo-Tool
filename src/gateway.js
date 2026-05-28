@@ -12,7 +12,7 @@ import {
   openTicketButton, colorButtons, colorMap,
 } from "./discord.js";
 import {
-  upsertGuild, upsertUser, getGuild, getPanelConfig,
+  upsertGuild, upsertUser, getGuild, getPanelConfig, getPanel, getPanels,
   setPanelChannel, setTicketCategory, setTranscriptChannel,
   setSupportRole, setPanelAppearance,
   getOpenTicketByUser, createTicket, getTicketByChannel, closeTicket,
@@ -395,21 +395,53 @@ async function handleButton(interaction) {
     return;
   }
 
-  // Ticket Buttons
-  if (customId === "create_ticket") {
-    await handleCreateTicket(interaction, guildId, interaction.user.id, interaction.user.username);
+  // ── Confirm-Close Dialog ─────────────────────────────────────────────────────
+  if (customId === "confirm_close_prompt") {
+    const cTicket = getTicketByChannel(interaction.channelId);
+    const cPanel  = cTicket?.panel_id ? (() => { try { return getPanel(cTicket.panel_id, guildId); } catch(_) { return null; } })() : null;
+    const confirmTxt = cPanel?.confirm_close_text  || "Ja, schließen";
+    const cancelTxt  = cPanel?.confirm_cancel_text || "Abbrechen";
+    await interaction.reply({
+      content: "Bist du sicher, dass du dieses Ticket schließen möchtest?",
+      components: [{ type: 1, components: [
+        { type: 2, style: 4, label: confirmTxt, custom_id: "close_ticket" },
+        { type: 2, style: 2, label: cancelTxt,  custom_id: "cancel_close"  },
+      ]}],
+      flags: 64,
+    });
     return;
   }
-
+  if (customId === "cancel_close") {
+    await interaction.reply({ content: "Schließung abgebrochen.", flags: 64 });
+    return;
+  }
+  // ── Ticket Buttons ─────────────────────────────────────────────────────────
+  if (customId === "create_ticket" || customId.startsWith("create_ticket:")) {
+    const panelId = customId.includes(":") ? parseInt(customId.split(":")[1]) : null;
+    await handleCreateTicket(interaction, guildId, interaction.user.id, interaction.user.username, panelId);
+    return;
+  }
   if (customId === "close_ticket") {
     await handleCloseTicket(interaction, guildId, interaction.user.id);
     return;
   }
-
   if (customId === "rate_ticket") {
-    await interaction.reply({ content: "\u2b50 Wie w\u00fcrdest du den Support bewerten?", components: ratingButtons(), flags: 64 });
+    const rt = getTicketByChannel(interaction.channelId);
+    const rp = rt?.panel_id ? (() => { try { return getPanel(rt.panel_id, guildId); } catch(_) { return null; } })() : null;
+    const cfg2 = getPanelConfig(guildId);
+    const maxS = rp?.rating_max_stars || cfg2?.rating_max_stars || 5;
+    const q = rp?.rating_question || cfg2?.rating_question || "Wie würdest du den Support bewerten?";
+    await interaction.reply({ content: `⭐ ${q}`, components: ratingButtons(maxS), flags: 64 });
     return;
   }
+  if (customId.startsWith("rate_")) {
+    const rating = parseInt(customId.split("_")[1]);
+    const ticket = getTicketByChannel(interaction.channelId);
+    if (ticket) addRating(ticket.id, rating, null);
+    await interaction.reply({ content: `Danke für deine Bewertung von **${rating}** ⭐`, flags: 64 });
+    return;
+  }
+}
 
   if (customId.startsWith("rate_")) {
     const rating = parseInt(customId.split("_")[1]);
@@ -492,34 +524,20 @@ async function refreshSetupMessage(interaction) {
   }
 }
 
-async function publishPanel(interaction, guildId) {
+async function publishPanel(interaction, guildId, panelId) {
+  let panel = null;
+  try { if (panelId) panel = getPanel(panelId, guildId); } catch(_) {}
   const config = getPanelConfig(guildId);
-
-  if (!config?.panel_channel_id) {
-    await interaction.reply({ content: "Fehler: Kein Panel-Channel konfiguriert. W\u00e4hle zuerst einen Kanal aus.", flags: 64 });
-    return;
-  }
-  if (!config?.ticket_category_id) {
-    await interaction.reply({ content: "Fehler: Keine Ticket-Kategorie konfiguriert. W\u00e4hle zuerst eine Kategorie aus.", flags: 64 });
-    return;
-  }
-
+  const channelId = panel?.channel_id || config?.panel_channel_id;
+  if (!channelId) { await interaction.reply({ content: "Fehler: Kein Panel-Channel konfiguriert.", flags: 64 }); return; }
   try {
-    const channel = await client.channels.fetch(config.panel_channel_id);
-    if (!channel) {
-      await interaction.reply({ content: "Fehler: Der konfigurierte Panel-Channel existiert nicht mehr.", flags: 64 });
-      return;
-    }
-
-    await channel.send({
-      embeds: [panelEmbed(config)],
-      components: openTicketButton(config),
-    });
-
-    await interaction.reply({ content: `Panel wurde in <#${config.panel_channel_id}> ver\u00f6ffentlicht!`, flags: 64 });
+    const channel = await client.channels.fetch(channelId);
+    if (!channel) { await interaction.reply({ content: "Fehler: Der Panel-Channel existiert nicht.", flags: 64 }); return; }
+    await channel.send({ embeds: [panelEmbed(panel || config)], components: openTicketButton(panel || config, panelId) });
+    await interaction.reply({ content: `Panel wurde in <#${channelId}> veröffentlicht!`, flags: 64 });
   } catch (err) {
-    console.error("Panel ver\u00f6ffentlichen fehlgeschlagen:", err);
-    await interaction.reply({ content: `Fehler beim Ver\u00f6ffentlichen: ${err.message}`, flags: 64 });
+    console.error("Panel veröffentlichen fehlgeschlagen:", err);
+    await interaction.reply({ content: `Fehler: ${err.message}`, flags: 64 });
   }
 }
 
@@ -545,111 +563,39 @@ function setupButtons() {
 
 // ── Ticket Logic ───────────────────────────────────────────────────────────────────
 
-async function handleCreateTicket(interaction, guildId, userId, username) {
+async function handleCreateTicket(interaction, guildId, userId, username, panelId) {
   upsertGuild(guildId, interaction.guild?.name || "Server");
-
+  let panel = null;
+  try { if (panelId) panel = getPanel(panelId, guildId); } catch(_) {}
   const config = getPanelConfig(guildId);
   const existing = getOpenTicketByUser(guildId, userId);
   if (existing) {
     await interaction.reply({ content: `Du hast bereits ein offenes Ticket: <#${existing.channel_id}>`, flags: 64 });
     return;
   }
-
   await interaction.reply({ content: "Erstelle dein Ticket...", flags: 64 });
-
   try {
+    const supportRoleIds = (() => { try { return JSON.parse(config?.support_role_ids || "[]"); } catch(_) { return config?.support_role_id ? [config.support_role_id] : []; } })();
+    const ticketRoles   = (() => { try { return JSON.parse(panel?.ticket_roles || "[]"); } catch(_) { return []; } })();
+    const allRoles = [...new Set([...supportRoleIds, ...ticketRoles])];
     const perms = [
       { id: guildId, deny: ["1024"] },
       { id: userId, allow: ["1024", "2048", "65536"] },
+      ...allRoles.map(id => ({ id, allow: ["1024", "2048", "65536", "16"] })),
     ];
-
-    if (config?.support_role_id) {
-      perms.push({ id: config.support_role_id, allow: ["1024", "2048", "65536", "16"] });
-    }
-
+    const categoryId = panel?.ticket_category_id || config?.ticket_category_id;
     const channel = await createChannel(
       guildId,
       `ticket-${username.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-      config?.ticket_category_id || undefined,
+      categoryId || undefined,
       perms,
     );
-
     const ticket = createTicket(guildId, userId, channel.id);
-    await sendMessage(channel.id, `<@${userId}>`, closeButton(), [ticketEmbed(ticket.id, userId, config)]);
-    console.log(`Ticket #${ticket.id} erstellt f\u00fcr ${userId}`);
+    const openMsg = (panel?.open_message || "").trim();
+    const mentionLine = `<@${userId}>${openMsg ? " " + openMsg : ""}`;
+    await sendMessage(channel.id, mentionLine, closeButton(panel), [ticketEmbed(ticket.id, userId, panel || config)]);
+    console.log(`Ticket #${ticket.id} erstellt für ${userId}`);
   } catch (err) {
     console.error("Fehler beim Erstellen des Ticket-Kanals:", err);
-  }
-}
-
-async function handleCloseTicket(interaction, guildId, userId) {
-  const channelId = interaction.channelId;
-  const ticket = getTicketByChannel(channelId);
-
-  if (!ticket) {
-    await interaction.reply({ content: "Kein Ticket in diesem Kanal gefunden.", flags: 64 });
-    return;
-  }
-  if (ticket.status === "closed") {
-    await interaction.reply({ content: "Dieses Ticket ist bereits geschlossen.", flags: 64 });
-    return;
-  }
-
-  // Generate transcript
-  const messages = getMessages(ticket.id);
-  const transcriptText = messages.map(m =>
-    `[${new Date(m.created_at).toLocaleString("de-DE")}] ${m.author_name}: ${m.content}`
-  ).join("\n");
-
-  const config = getPanelConfig(guildId);
-
-  // Send transcript if configured
-  if (config?.transcript_channel_id && transcriptText) {
-    try {
-      await sendMessage(
-        config.transcript_channel_id,
-        `\ud83d\udccb **Transkript** \u2014 Ticket #${ticket.id} von <@${ticket.user_id}>`,
-        [],
-        [{
-          title: `Ticket #${ticket.id} \u2014 Transkript`,
-          description: transcriptText.length > 4000
-            ? transcriptText.substring(0, 4000) + "\n\n... (gek\u00fcrzt)"
-            : transcriptText || "Keine Nachrichten.",
-          color: config?.embed_color ?? 3447003,
-          fields: [
-            { name: "Erstellt von", value: `<@${ticket.user_id}>`, inline: true },
-            { name: "Geschlossen von", value: `<@${userId}>`, inline: true },
-          ],
-          timestamp: new Date().toISOString(),
-          footer: { text: "Resolvo Tool \u2022 Transkript" },
-        }],
-      );
-    } catch (e) {
-      console.error("Transkript senden fehlgeschlagen:", e.message);
-    }
-  }
-
-  closeTicket(ticket.id, transcriptText);
-
-  await interaction.reply({
-    embeds: [{
-      title: "Ticket geschlossen",
-      description: `Ticket #${ticket.id} wurde von <@${userId}> geschlossen.\n\nDer Kanal wird in **5 Sekunden** gel\u00f6scht.`,
-      color: 0xed4245,
-      footer: { text: "Resolvo Tool" },
-      timestamp: new Date().toISOString(),
-    }],
-  });
-
-  setTimeout(async () => {
-    try { await deleteChannel(channelId); } catch (err) { console.error("Kanal l\u00f6schen fehlgeschlagen:", err); }
-  }, 5000);
-}
-
-export async function stopGatewayBot() {
-  if (client) {
-    await client.destroy();
-    client = null;
-    console.log("Gateway getrennt");
   }
 }
