@@ -581,7 +581,7 @@ async function handleCreateTicket(interaction, guildId, userId, username, panelI
       categoryId || undefined,
       perms,
     );
-    const ticket = createTicket(guildId, userId, channel.id);
+    const ticket = createTicket(guildId, userId, channel.id, "medium", null, null, panelId || null);
     const openMsg = (panel?.open_message || "").trim();
     const mentionLine = `<@${userId}>${openMsg ? " " + openMsg : ""}`;
     await sendMessage(channel.id, mentionLine, closeButton(panel), [ticketEmbed(ticket.id, userId, panel || config)]);
