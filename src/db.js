@@ -61,6 +61,23 @@ import Database from "better-sqlite3";
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
+
+        CREATE TABLE IF NOT EXISTS panels (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          guild_id TEXT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+          name TEXT NOT NULL DEFAULT 'Panel',
+          channel_id TEXT,
+          embed_title TEXT DEFAULT 'Support',
+          embed_description TEXT DEFAULT 'Klicke auf den Button um ein Ticket zu erstellen.',
+          embed_color INTEGER DEFAULT 3447003,
+          button_text TEXT DEFAULT 'Ticket erstellen',
+          button_color INTEGER DEFAULT 1,
+          ticket_category_id TEXT,
+          sort_order INTEGER DEFAULT 0,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+  
       CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         guild_id TEXT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
@@ -115,6 +132,17 @@ import Database from "better-sqlite3";
 
   // ── Guilds ──────────────────────────────────────────────────────────────────
 
+
+    // ── Schema migrations (safe ALTER TABLE) ────────────────────────────────────
+    const _addCol = (col, def) => {
+      try { db.prepare(`ALTER TABLE panel_configs ADD COLUMN ${col} ${def}`).run(); } catch (_) {}
+    };
+    _addCol("support_role_ids", "TEXT DEFAULT '[]'");
+    _addCol("rating_question", "TEXT DEFAULT 'Wie zufrieden bist du mit der Bearbeitung?'");
+    _addCol("rating_max_stars", "INTEGER DEFAULT 5");
+    _addCol("rating_dm_message", "TEXT DEFAULT ''");
+    _addCol("rating_show_in_channel", "INTEGER DEFAULT 0");
+  
   export function upsertGuild(id, name) {
     db.prepare(`
       INSERT INTO guilds (id, name) VALUES (?, ?)
@@ -170,6 +198,29 @@ import Database from "better-sqlite3";
     `).run(guildId, ...values);
   }
 
+
+  // ── Panels (multi-panel per guild) ──────────────────────────────────────────
+
+  export function getPanels(guildId) {
+    return db.prepare("SELECT * FROM panels WHERE guild_id = ? AND is_active = 1 ORDER BY sort_order, id").all(guildId);
+  }
+
+  export function createPanel(guildId, fields) {
+    const cols = Object.keys(fields);
+    const placeholders = cols.map(() => "?").join(", ");
+    const res = db.prepare(`INSERT INTO panels (guild_id, ${cols.join(", ")}) VALUES (?, ${placeholders})`).run(guildId, ...Object.values(fields));
+    return res.lastInsertRowid;
+  }
+
+  export function updatePanel(id, guildId, fields) {
+    const cols = Object.keys(fields);
+    db.prepare(`UPDATE panels SET ${cols.map(c => `${c} = ?`).join(", ")} WHERE id = ? AND guild_id = ?`).run(...Object.values(fields), id, guildId);
+  }
+
+  export function deletePanel(id, guildId) {
+    db.prepare("UPDATE panels SET is_active = 0 WHERE id = ? AND guild_id = ?").run(id, guildId);
+  }
+  
   // ── Ticket Categories (Tags) ─────────────────────────────────────────────────
 
   export function addTicketCategory(guildId, name, color, description, formFields) {
