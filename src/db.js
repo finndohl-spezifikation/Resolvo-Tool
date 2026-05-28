@@ -111,8 +111,8 @@ import Database from "better-sqlite3";
         closed_at TEXT,
         transcript TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-          panel_id INTEGER,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        panel_id INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS ticket_messages (
