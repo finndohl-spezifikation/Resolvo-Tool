@@ -116,40 +116,41 @@ import nacl from "tweetnacl";
 
   // ── Buttons & Components ──────────────────────────────────────────────────────
 
-  export function closeButton() {
+  export function closeButton(panel) {
+    const label = panel?.close_button_text || "Ticket schließen";
+    const style = Number(panel?.close_button_color ?? 4);
+    const confirmEnabled = !!panel?.confirm_close_enabled;
     return [{
       type: 1,
       components: [
-        { type: 2, style: 4, label: "Ticket schließen", custom_id: "close_ticket" },
+        { type: 2, style, label, custom_id: confirmEnabled ? "confirm_close_prompt" : "close_ticket" },
         { type: 2, style: 1, label: "Bewerten", custom_id: "rate_ticket" },
       ],
     }];
   }
 
-  export function ratingButtons() {
-    const labels = ["1 - Schlecht", "2", "3 - Okay", "4", "5 - Perfekt"];
-    return [{
-      type: 1,
-      components: [1, 2, 3, 4, 5].map((n) => ({
+  export function ratingButtons(maxStars, question) {
+    const max = Math.min(Number(maxStars) || 5, 5);
+    const components = [];
+    for (let n = 1; n <= max; n++) {
+      const pct = n / max;
+      components.push({
         type: 2,
-        style: n <= 2 ? 4 : n === 3 ? 2 : 3,
-        label: labels[n - 1],
+        style: pct <= 0.3 ? 4 : pct >= 0.7 ? 3 : 2,
+        label: n === 1 ? `1 ★ Schlecht` : n === max ? `${n} ★ Super` : `${n} ★`,
         custom_id: `rate_${n}`,
-      })),
-    }];
+      });
+    }
+    return [{ type: 1, components }];
   }
 
-  export function openTicketButton(config) {
-    const style = config?.button_color ?? 1;
+  export function openTicketButton(config, panelId) {
+    const style = Number(config?.button_color ?? 1);
     const label = config?.button_text || "Ticket erstellen";
+    const customId = panelId ? `create_ticket:${panelId}` : "create_ticket";
     return [{
       type: 1,
-      components: [{
-        type: 2,
-        style: Number(style),
-        label,
-        custom_id: "create_ticket",
-      }],
+      components: [{ type: 2, style, label, custom_id: customId }],
     }];
   }
 
