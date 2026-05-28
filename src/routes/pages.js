@@ -1,7 +1,7 @@
 import { Router } from "express";
   import { getSession } from "./auth.js";
   import { getClient } from "../gateway.js";
-  import { getPanelConfig, getStats, upsertPanelConfig, getGuild, getGlobalTicketCount, getPanels, createPanel, updatePanel, deletePanel } from "../db.js";
+  import { getPanelConfig, getStats, upsertPanelConfig, getGuild, getGlobalTicketCount, getPanels, getPanel, createPanel, updatePanel, deletePanel } from "../db.js";
 
   const router = Router();
 
@@ -738,36 +738,20 @@ import { Router } from "express";
         };
 
         const panelHtml = panels.map((p, i) => {
-          const ph = embedHex(p.embed_color);
-          return `<div class="panel-card" id="pc${p.id}">
+          const statusDot = p.channel_id ? '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block;margin-right:6px;"></span>' : '<span style="width:8px;height:8px;border-radius:50%;background:#6b7280;display:inline-block;margin-right:6px;"></span>';
+          return `<div class="panel-card">
             <div class="panel-card-header">
-              <span class="panel-card-title">📌 ${p.name || 'Panel '+(i+1)}</span>
+              <span class="panel-card-title">${statusDot}${p.name || 'Panel '+(i+1)}</span>
               <div style="display:flex;gap:8px;">
-                <button type="button" class="btn-icon" onclick="togglePanel(${p.id})">▼ Details</button>
+                <a href="/server/${guildId}/panels/${p.id}" class="btn btn-primary" style="padding:6px 14px;font-size:.8rem;">⚙️ Konfigurieren</a>
                 <form method="POST" action="/server/${guildId}/panels/${p.id}/delete" style="margin:0;">
-                  <button type="submit" class="btn-icon" onclick="return confirm('Panel löschen?')">✕ Löschen</button>
+                  <button type="submit" class="btn-icon" onclick="return confirm('Panel löschen?')">✕</button>
                 </form>
               </div>
             </div>
-            <div class="panel-card-body" id="pb${p.id}">
-              <form method="POST" action="/server/${guildId}/panels/${p.id}/update">
-                <div class="form-row">
-                  <div class="form-group"><label>Panel-Name</label><input type="text" name="name" value="${p.name}" maxlength="50"></div>
-                  <div class="form-group"><label>Panel-Channel</label><select name="channel_id">${sel(p.channel_id, textChannels, "-- wählen --")}</select></div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group"><label>Ticket-Kategorie</label><select name="ticket_category_id">${sel(p.ticket_category_id, categories, "-- wählen --")}</select></div>
-                </div>
-                <div class="form-group"><label>Button-Text</label><input type="text" name="button_text" value="${p.button_text || 'Ticket erstellen'}" maxlength="80"></div>
-                <div class="form-group"><label>Button-Farbe</label>${btnColorPicker(p.button_color, 'p'+p.id+'_')}</div>
-                <div class="form-group"><label>Embed-Farbe</label>${embedColorPicker(p.embed_color, 'p'+p.id+'_')}</div>
-                <div class="form-row">
-                  <div class="form-group"><label>Embed-Titel</label><input type="text" name="embed_title" value="${p.embed_title || 'Support'}" maxlength="100"></div>
-                </div>
-                <div class="form-group"><label>Embed-Beschreibung</label><textarea name="embed_description" maxlength="400">${p.embed_description || ''}</textarea></div>
-                <button type="submit" class="btn btn-primary" style="margin-top:10px;">Panel speichern</button>
-              </form>
-            </div>
+            <p style="font-size:.78rem;color:#8b92c8;margin:4px 0 0;">
+              ${p.channel_id ? 'Channel konfiguriert' : 'Kein Channel gewählt'} · Button: ${p.button_text || 'Ticket erstellen'}
+            </p>
           </div>`;
         }).join('');
 
@@ -905,45 +889,301 @@ import { Router } from "express";
         res.redirect("/server/" + guildId);
       });
 
-      router.post("/server/:guildId/panels/create", (req, res) => {
-        const session = getSession(req);
-        if (!session) { res.redirect("/auth/login"); return; }
-        try {
-          createPanel(req.params.guildId, {
-            name: "Panel " + (Date.now() % 1000),
-            button_text: "Ticket erstellen",
-            embed_title: "Support",
-            embed_description: "Klicke auf den Button um ein Ticket zu erstellen.",
-          });
-        } catch(_) {}
-        res.redirect("/server/" + req.params.guildId);
-      });
+      // ── Panel Routes ────────────────────────────────────────────────────────────
 
-      router.post("/server/:guildId/panels/:panelId/update", (req, res) => {
-        const session = getSession(req);
-        if (!session) { res.redirect("/auth/login"); return; }
-        const body = req.body;
-        try {
-          updatePanel(parseInt(req.params.panelId), req.params.guildId, {
-            name: body.name || "Panel",
-            channel_id: body.channel_id || null,
-            ticket_category_id: body.ticket_category_id || null,
-            button_text: body.button_text || "Ticket erstellen",
-            button_color: body.button_color ? parseInt(body.button_color) : 1,
-            embed_color: body.embed_color ? parseInt(body.embed_color, 16) : 3447003,
-            embed_title: body.embed_title || "Support",
-            embed_description: body.embed_description || "",
-          });
-        } catch(_) {}
-        res.redirect("/server/" + req.params.guildId);
-      });
+        router.post("/server/:guildId/panels/create", (req, res) => {
+          const session = getSession(req);
+          if (!session) { res.redirect("/auth/login"); return; }
+          try {
+            createPanel(req.params.guildId, {
+              name: "Panel " + (Date.now() % 10000),
+              button_text: "Ticket erstellen",
+              embed_title: "Support",
+              embed_description: "Klicke auf den Button um ein Ticket zu erstellen.",
+              button_color: 1,
+              embed_color: 3447003,
+              who_can_close: "all",
+              rating_enabled: 1,
+              rating_max_stars: 5,
+            });
+          } catch(e) { console.error(e); }
+          res.redirect("/server/" + req.params.guildId);
+        });
 
-      router.post("/server/:guildId/panels/:panelId/delete", (req, res) => {
-        const session = getSession(req);
-        if (!session) { res.redirect("/auth/login"); return; }
-        try { deletePanel(parseInt(req.params.panelId), req.params.guildId); } catch(_) {}
-        res.redirect("/server/" + req.params.guildId);
-      });
+        router.get("/server/:guildId/panels/:panelId", (req, res) => {
+          const session = getSession(req);
+          if (!session) { res.redirect("/auth/login"); return; }
+          const lang = getLang(req);
+          const guildId  = req.params.guildId;
+          const panelId  = parseInt(req.params.panelId);
+          const client   = getClient();
+          const guild    = client?.guilds?.cache?.get(guildId);
+          if (!guild) { res.redirect("/servers"); return; }
+          let panel = null;
+          try { panel = getPanel(panelId, guildId); } catch(_) {}
+          if (!panel) { res.redirect("/server/" + guildId); return; }
+          const textChannels = guild.channels.cache.filter(c => c.type === 0).sort((a,b) => a.rawPosition-b.rawPosition).map(c => ({ id:c.id, name:c.name }));
+          const categories   = guild.channels.cache.filter(c => c.type === 4).sort((a,b) => a.rawPosition-b.rawPosition).map(c => ({ id:c.id, name:c.name }));
+          const roles        = guild.roles.cache.filter(r => !r.managed && r.name !== "@everyone").sort((a,b) => b.position-a.position).map(r => ({ id:r.id, name:r.name }));
+          const sel2 = (val, items, ph) => `<option value="">${ph}</option>` + items.map(i => `<option value="${i.id}" ${i.id===val?"selected":""}>${i.name}</option>`).join("");
+          const eHex = ((panel.embed_color || 3447003) >>> 0).toString(16).padStart(6,'0').toUpperCase();
+          const bcp2 = (val, pfx='') => {
+            const c = parseInt(val)||1;
+            return `<div class="color-btn-group">
+              <div class="c-blurple"><input class="color-btn-opt" type="radio" name="${pfx}button_color" id="${pfx}bc1" value="1" ${c===1?"checked":""}><label class="color-btn-label" for="${pfx}bc1"><span class="color-btn-dot"></span>Primär</label></div>
+              <div class="c-gray"><input class="color-btn-opt" type="radio" name="${pfx}button_color" id="${pfx}bc2" value="2" ${c===2?"checked":""}><label class="color-btn-label" for="${pfx}bc2"><span class="color-btn-dot"></span>Sekundär</label></div>
+              <div class="c-green"><input class="color-btn-opt" type="radio" name="${pfx}button_color" id="${pfx}bc3" value="3" ${c===3?"checked":""}><label class="color-btn-label" for="${pfx}bc3"><span class="color-btn-dot"></span>Grün</label></div>
+              <div class="c-red"><input class="color-btn-opt" type="radio" name="${pfx}button_color" id="${pfx}bc4" value="4" ${c===4?"checked":""}><label class="color-btn-label" for="${pfx}bc4"><span class="color-btn-dot"></span>Rot</label></div>
+            </div>`;
+          };
+          const selTicketRoles = (() => { try { return JSON.parse(panel.ticket_roles||'[]'); } catch(_) { return []; } })();
+          const ratingEnabled  = panel.rating_enabled !== 0;
+          const confirmEnabled = !!panel.confirm_close_enabled;
+          const msg = req.query.success === '1' ? '<div class="alert-success">✓ Panel wurde veröffentlicht!</div>' : req.query.error === 'no_channel' ? '<div class="alert-error">✗ Bitte konfiguriere zuerst einen Panel-Channel.</div>' : req.query.error ? '<div class="alert-error">✗ Fehler beim Veröffentlichen.</div>' : '';
+          res.send(layout("Panel: " + panel.name, `
+            <style>
+              .section-desc{color:#8b92c8;font-size:.8rem;margin:-4px 0 14px;}
+              .real-check-row{display:flex;align-items:center;gap:10px;margin:6px 0;}
+              .real-check-row input[type=checkbox]{width:18px;height:18px;accent-color:#5865F2;}
+              .alert-success{background:#16a34a22;border:1px solid #34d399;border-radius:9px;padding:10px 16px;color:#34d399;font-size:.85rem;margin-bottom:14px;}
+              .alert-error{background:#dc262622;border:1px solid #ef4444;border-radius:9px;padding:10px 16px;color:#ef4444;font-size:.85rem;margin-bottom:14px;}
+              .star-opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+              .star-opt-inp{display:none;}
+              .star-opt-lbl{padding:7px 14px;border:1.5px solid #2e3250;border-radius:9px;cursor:pointer;font-size:.82rem;}
+              .star-opt-inp:checked+.star-opt-lbl{border-color:#5865F2;background:#22264a;color:#fff;}
+              .multi-check-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+              .multi-check-item{padding:7px 14px;border:1.5px solid #2e3250;border-radius:9px;cursor:pointer;font-size:.82rem;display:flex;align-items:center;gap:8px;}
+              .multi-check-item.checked{border-color:#5865F2;background:#22264a;}
+              .multi-check-item input{accent-color:#5865F2;}
+              .who-radio-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+              .who-radio-opt{display:none;}
+              .who-radio-lbl{padding:8px 16px;border:1.5px solid #2e3250;border-radius:9px;cursor:pointer;font-size:.83rem;}
+              .who-radio-opt:checked+.who-radio-lbl{border-color:#5865F2;background:#22264a;color:#fff;}
+            </style>
+            <div class="page-header">
+              <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:8px;">
+                <a href="/server/${guildId}" style="color:#8b92c8;font-size:.85rem;text-decoration:none;">← Zurück</a>
+                <h1 style="font-size:1.3rem;margin:0;">⚙️ Panel: ${panel.name}</h1>
+              </div>
+            </div>
+            <div class="content container">
+              ${msg}
+              <form method="POST" action="/server/${guildId}/panels/${panelId}/update" class="config-form">
+
+                <div class="section-card">
+                  <h3>📋 Grundeinstellungen</h3>
+                  <p class="section-desc">Name, Channel und Ticket-Kategorie für dieses Panel.</p>
+                  <div class="form-row">
+                    <div class="form-group"><label>Panel-Name</label><input type="text" name="name" value="${panel.name}" maxlength="50"></div>
+                    <div class="form-group"><label>Panel-Channel (wo der Button erscheint)</label><select name="channel_id">${sel2(panel.channel_id, textChannels, "-- wählen --")}</select></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group"><label>Ticket-Kategorie (Discord)</label><select name="ticket_category_id">${sel2(panel.ticket_category_id, categories, "-- wählen --")}</select></div>
+                    <div class="form-group"><label>Transkript-Channel</label><select name="transcript_channel_id">${sel2(panel.transcript_channel_id, textChannels, "-- kein Transkript --")}</select></div>
+                  </div>
+                </div>
+
+                <div class="section-card">
+                  <h3>🎨 Embed</h3>
+                  <p class="section-desc">Das Embed das im Panel-Channel gesendet wird.</p>
+                  <div class="form-group">
+                    <label>Embed-Farbe</label>
+                    <div class="color-pick-row">
+                      <input type="color" class="color-pick-native" id="ecp_p" value="#${eHex}" oninput="document.getElementById('ech_p').value=this.value.slice(1).toUpperCase()">
+                      <input type="text" id="ech_p" name="embed_color" value="${eHex}" maxlength="6" class="color-pick-hex" oninput="document.getElementById('ecp_p').value='#'+this.value">
+                    </div>
+                  </div>
+                  <div class="form-group"><label>Embed-Titel</label><input type="text" name="embed_title" value="${panel.embed_title||'Support'}" maxlength="100"></div>
+                  <div class="form-group"><label>Embed-Beschreibung</label><textarea name="embed_description" maxlength="400">${panel.embed_description||''}</textarea></div>
+                </div>
+
+                <div class="section-card">
+                  <h3>🔘 Öffnen-Button</h3>
+                  <p class="section-desc">Button zum Öffnen neuer Tickets.</p>
+                  <div class="form-row">
+                    <div class="form-group"><label>Button-Text</label><input type="text" name="button_text" value="${panel.button_text||'Ticket erstellen'}" maxlength="80"></div>
+                  </div>
+                  <div class="form-group"><label>Button-Farbe</label>${bcp2(panel.button_color)}</div>
+                  <div class="form-group"><label>Öffnungs-Nachricht (erscheint im Ticket-Kanal)</label><textarea name="open_message" maxlength="400" placeholder="z.B. Willkommen! Bitte beschreibe dein Anliegen.">${panel.open_message||''}</textarea></div>
+                </div>
+
+                <div class="section-card">
+                  <h3>🔒 Schließen-Button</h3>
+                  <p class="section-desc">Einstellungen zum Schließen von Tickets.</p>
+                  <div class="form-row">
+                    <div class="form-group"><label>Schließen-Button Text</label><input type="text" name="close_button_text" value="${panel.close_button_text||'Ticket schließen'}" maxlength="80"></div>
+                    <div class="form-group"><label>Schließen-Button Farbe</label>${bcp2(panel.close_button_color||4, 'close_')}</div>
+                  </div>
+                  <div class="form-group"><label>Schließungs-Nachricht (erscheint beim Schließen)</label><textarea name="close_message" maxlength="400" placeholder="z.B. Dein Ticket wurde bearbeitet.">${panel.close_message||''}</textarea></div>
+                  <div class="form-group">
+                    <label>Wer darf Tickets schließen?</label>
+                    <div class="who-radio-group">
+                      ${[['all','Alle'],['support','Nur Support-Rollen'],['owner','Nur Ticket-Ersteller']].map(([v,label]) =>
+                        `<input class="who-radio-opt" type="radio" name="who_can_close" id="wcl_${v}" value="${v}" ${(panel.who_can_close||'all')===v?'checked':''}><label class="who-radio-lbl" for="wcl_${v}">${label}</label>`
+                      ).join('')}
+                    </div>
+                  </div>
+                  <div class="real-check-row">
+                    <input type="checkbox" id="cce" name="confirm_close_enabled" ${confirmEnabled?'checked':''} onchange="document.getElementById('ccfg').style.display=this.checked?'block':'none'">
+                    <label for="cce">Bestätigungs-Dialog beim Schließen anzeigen</label>
+                  </div>
+                  <div id="ccfg" style="margin-top:10px;${confirmEnabled?'':'display:none'}">
+                    <div class="form-row">
+                      <div class="form-group"><label>Bestätigen-Text</label><input type="text" name="confirm_close_text" value="${panel.confirm_close_text||'Ja, schließen'}" maxlength="80"></div>
+                      <div class="form-group"><label>Abbrechen-Text</label><input type="text" name="confirm_cancel_text" value="${panel.confirm_cancel_text||'Abbrechen'}" maxlength="80"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section-card">
+                  <h3>👥 Rollen & Rechte</h3>
+                  <p class="section-desc">Rollen mit Zugriff auf Ticket-Kanäle dieses Panels.</p>
+                  <div class="form-group">
+                    <label>Ticket-Rollen (haben Lese-/Schreibzugriff auf alle Tickets)</label>
+                    <div class="multi-check-grid">
+                      ${roles.length ? roles.map(r => `
+                        <label class="multi-check-item${selTicketRoles.includes(r.id)?' checked':''}">
+                          <input type="checkbox" name="ticket_roles" value="${r.id}" ${selTicketRoles.includes(r.id)?'checked':''}
+                            onchange="this.closest('.multi-check-item').classList.toggle('checked',this.checked)">
+                          ${r.name}
+                        </label>
+                      `).join('') : '<p style="color:#8b92c8;font-size:.82rem;">Keine Rollen gefunden.</p>'}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section-card">
+                  <h3>⏱️ Auto-Close</h3>
+                  <p class="section-desc">Tickets automatisch nach einer bestimmten Zeit schließen.</p>
+                  <div class="real-check-row">
+                    <input type="checkbox" id="ace" name="auto_close_enabled" ${panel.auto_close_enabled?'checked':''} onchange="document.getElementById('acfg').style.display=this.checked?'block':'none'">
+                    <label for="ace">Auto-Close aktivieren</label>
+                  </div>
+                  <div id="acfg" style="margin-top:12px;${panel.auto_close_enabled?'':'display:none'}">
+                    <div class="form-row">
+                      <div class="form-group"><label>Schließen nach X Stunden (0 = deaktiviert)</label><input type="number" name="auto_close_hours" value="${panel.auto_close_hours||48}" min="0" max="720"></div>
+                      <div class="form-group"><label>Bei Inaktivität nach X Stunden schließen (0 = deaktiviert)</label><input type="number" name="auto_close_inactivity_hours" value="${panel.auto_close_inactivity_hours||0}" min="0" max="168"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section-card">
+                  <h3>⭐ Bewertungssystem</h3>
+                  <p class="section-desc">Nutzer können den Support nach dem Schließen bewerten.</p>
+                  <div class="real-check-row">
+                    <input type="checkbox" id="ron" name="rating_enabled" ${ratingEnabled?'checked':''} onchange="document.getElementById('rcfg').style.display=this.checked?'block':'none'">
+                    <label for="ron">Bewertungen aktivieren</label>
+                  </div>
+                  <div id="rcfg" style="margin-top:14px;${ratingEnabled?'':'display:none'}">
+                    <div class="form-group"><label>Bewertungsfrage</label><input type="text" name="rating_question" value="${panel.rating_question||'Wie zufrieden bist du mit dem Support?'}" maxlength="200"></div>
+                    <div class="form-group">
+                      <label>Maximale Sternanzahl</label>
+                      <div class="star-opts">
+                        ${[3,4,5,6,7,8,9,10].map(n => {
+                          const cur = panel.rating_max_stars||5;
+                          return `<input class="star-opt-inp" type="radio" name="rating_max_stars" id="rs${n}" value="${n}" ${cur==n?'checked':''}><label class="star-opt-lbl" for="rs${n}">${'★'.repeat(Math.min(n,5))} ${n}</label>`;
+                        }).join('')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+                  <a href="/server/${guildId}" class="btn btn-secondary">← Zurück</a>
+                  <button type="submit" class="btn btn-success">💾 Speichern</button>
+                </div>
+              </form>
+
+              <div style="margin-top:24px;padding:20px;border:1.5px dashed #2e3250;border-radius:14px;">
+                <h3 style="color:#fff;font-size:.95rem;margin:0 0 6px;">🚀 Panel veröffentlichen</h3>
+                <p style="color:#8b92c8;font-size:.8rem;margin:0 0 14px;">Sendet das Panel-Embed + Button in den konfigurierten Channel. Wird im Discord-Server sichtbar.</p>
+                <form method="POST" action="/server/${guildId}/panels/${panelId}/publish">
+                  <button type="submit" class="btn btn-primary">Panel jetzt senden</button>
+                </form>
+              </div>
+            </div>
+          `, { session, activeNav: "servers", lang }));
+        });
+
+        router.post("/server/:guildId/panels/:panelId/update", (req, res) => {
+          const session = getSession(req);
+          if (!session) { res.redirect("/auth/login"); return; }
+          const guildId2 = req.params.guildId;
+          const panelId2 = parseInt(req.params.panelId);
+          const body = req.body;
+          const ticketRoleIds = Array.isArray(body.ticket_roles) ? body.ticket_roles : (body.ticket_roles ? [body.ticket_roles] : []);
+          try {
+            updatePanel(panelId2, guildId2, {
+              name:                        body.name || "Panel",
+              channel_id:                  body.channel_id || null,
+              ticket_category_id:          body.ticket_category_id || null,
+              transcript_channel_id:       body.transcript_channel_id || null,
+              embed_title:                 body.embed_title || "Support",
+              embed_description:           body.embed_description || "",
+              embed_color:                 body.embed_color ? parseInt(body.embed_color, 16) : 3447003,
+              button_text:                 body.button_text || "Ticket erstellen",
+              button_color:                body.button_color ? parseInt(body.button_color) : 1,
+              close_button_text:           body.close_button_text || "Ticket schließen",
+              close_button_color:          body.close_button_color ? parseInt(body.close_button_color) : 4,
+              open_message:                body.open_message || "",
+              close_message:               body.close_message || "",
+              who_can_close:               body.who_can_close || "all",
+              ticket_roles:                JSON.stringify(ticketRoleIds),
+              auto_close_enabled:          body.auto_close_enabled === "on" ? 1 : 0,
+              auto_close_hours:            body.auto_close_hours ? parseInt(body.auto_close_hours) : 48,
+              auto_close_inactivity_hours: body.auto_close_inactivity_hours ? parseInt(body.auto_close_inactivity_hours) : 0,
+              confirm_close_enabled:       body.confirm_close_enabled === "on" ? 1 : 0,
+              confirm_close_text:          body.confirm_close_text || "Ja, schließen",
+              confirm_cancel_text:         body.confirm_cancel_text || "Abbrechen",
+              rating_enabled:              body.rating_enabled === "on" ? 1 : 0,
+              rating_question:             body.rating_question || "Wie zufrieden bist du mit dem Support?",
+              rating_max_stars:            body.rating_max_stars ? parseInt(body.rating_max_stars) : 5,
+            });
+          } catch(e) { console.error("updatePanel:", e); }
+          res.redirect("/server/" + guildId2 + "/panels/" + panelId2);
+        });
+
+        router.post("/server/:guildId/panels/:panelId/publish", async (req, res) => {
+          const session = getSession(req);
+          if (!session) { res.redirect("/auth/login"); return; }
+          const guildId3 = req.params.guildId;
+          const panelId3 = parseInt(req.params.panelId);
+          let panelData = null;
+          try { panelData = getPanel(panelId3, guildId3); } catch(_) {}
+          if (!panelData || !panelData.channel_id) {
+            res.redirect("/server/" + guildId3 + "/panels/" + panelId3 + "?error=no_channel"); return;
+          }
+          const clientBot = getClient();
+          try {
+            const ch = await clientBot?.channels?.fetch(panelData.channel_id);
+            if (!ch) throw new Error("Channel not found");
+            await ch.send({
+              embeds: [{
+                title: panelData.embed_title || "Support",
+                description: panelData.embed_description || "Klicke auf den Button um ein Ticket zu erstellen.",
+                color: Number(panelData.embed_color || 3447003),
+                footer: { text: "Resolvo Tool" },
+              }],
+              components: [{ type: 1, components: [{
+                type: 2,
+                style: Number(panelData.button_color || 1),
+                label: panelData.button_text || "Ticket erstellen",
+                custom_id: `create_ticket:${panelId3}`,
+              }]}],
+            });
+            res.redirect("/server/" + guildId3 + "/panels/" + panelId3 + "?success=1");
+          } catch(e) {
+            console.error("Panel publish:", e);
+            res.redirect("/server/" + guildId3 + "/panels/" + panelId3 + "?error=1");
+          }
+        });
+
+        router.post("/server/:guildId/panels/:panelId/delete", (req, res) => {
+          const session = getSession(req);
+          if (!session) { res.redirect("/auth/login"); return; }
+          try { deletePanel(parseInt(req.params.panelId), req.params.guildId); } catch(_) {}
+          res.redirect("/server/" + req.params.guildId);
+        });
 
 
     // --- Premium ---
