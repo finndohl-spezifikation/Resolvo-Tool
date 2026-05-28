@@ -599,3 +599,82 @@ async function handleCreateTicket(interaction, guildId, userId, username, panelI
     console.error("Fehler beim Erstellen des Ticket-Kanals:", err);
   }
 }
+  async function handleCloseTicket(interaction, guildId, userId) {
+    const channelId = interaction.channelId;
+    const ticket = getTicketByChannel(channelId);
+    if (!ticket) { await interaction.reply({ content: "Kein Ticket gefunden.", flags: 64 }); return; }
+    if (ticket.status === "closed") { await interaction.reply({ content: "Ticket ist bereits geschlossen.", flags: 64 }); return; }
+
+    let panel = null;
+    try { if (ticket.panel_id) panel = getPanel(ticket.panel_id, guildId); } catch(_) {}
+    const config = getPanelConfig(guildId);
+
+    // who_can_close: "all" | "support" | "owner"
+    const whoCanClose = panel?.who_can_close || "all";
+    if (whoCanClose === "owner" && userId !== ticket.user_id) {
+      await interaction.reply({ content: "Nur der Ticket-Ersteller darf dieses Ticket schließen.", flags: 64 }); return;
+    }
+    if (whoCanClose === "support" && userId !== ticket.user_id) {
+      const supportRoleIds = (() => { try { return JSON.parse(config?.support_role_ids || "[]"); } catch(_) { return config?.support_role_id ? [config.support_role_id] : []; } })();
+      const ticketRoles   = (() => { try { return JSON.parse(panel?.ticket_roles   || "[]"); } catch(_) { return []; } })();
+      const allStaff = [...new Set([...supportRoleIds, ...ticketRoles])];
+      const hasRole = allStaff.length === 0 || allStaff.some(rid => interaction.member?.roles?.cache?.has(rid));
+      if (!hasRole) { await interaction.reply({ content: "Du hast keine Berechtigung, dieses Ticket zu schließen.", flags: 64 }); return; }
+    }
+
+    const messages = getMessages(ticket.id);
+    const transcriptText = messages.map(m =>
+      `[${new Date(m.created_at).toLocaleString("de-DE")}] ${m.author_name}: ${m.content}`
+    ).join("\n");
+
+    const transcriptChannelId = panel?.transcript_channel_id || config?.transcript_channel_id;
+    if (transcriptChannelId && transcriptText) {
+      try {
+        await sendMessage(transcriptChannelId, `📋 **Transkript** — Ticket #${ticket.id} von <@${ticket.user_id}>`, [], [{
+          title: `Ticket #${ticket.id} — Transkript`,
+          description: transcriptText.length > 4000 ? transcriptText.substring(0, 4000) + "\n\n... (gekürzt)" : transcriptText || "Keine Nachrichten.",
+          color: Number(panel?.embed_color || config?.embed_color || 3447003),
+          fields: [
+            { name: "Erstellt von", value: `<@${ticket.user_id}>`, inline: true },
+            { name: "Geschlossen von", value: `<@${userId}>`, inline: true },
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: "Resolvo Tool • Transkript" },
+        }]);
+      } catch (e) { console.error("Transkript senden fehlgeschlagen:", e.message); }
+    }
+
+    closeTicket(ticket.id, transcriptText);
+
+    const closeMsg = (panel?.close_message || `Ticket #${ticket.id} wurde von <@${userId}> geschlossen.`).trim();
+    await interaction.reply({
+      embeds: [{
+        title: "Ticket geschlossen",
+        description: `${closeMsg}\n\nDer Kanal wird in **5 Sekunden** gelöscht.`,
+        color: 0xed4245,
+        footer: { text: "Resolvo Tool" },
+        timestamp: new Date().toISOString(),
+      }],
+    });
+
+    // Rating request if enabled
+    const ratingEnabled = panel?.rating_enabled !== undefined ? panel.rating_enabled : (config?.rating_enabled ?? 1);
+    if (ratingEnabled) {
+      const maxStars = panel?.rating_max_stars || config?.rating_max_stars || 5;
+      const question = panel?.rating_question  || config?.rating_question  || "Wie zufrieden bist du mit dem Support?";
+      try { await sendMessage(channelId, `⭐ ${question}`, ratingButtons(maxStars), []); } catch(_) {}
+    }
+
+    setTimeout(async () => {
+      try { await deleteChannel(channelId); } catch (err) { console.error("Kanal löschen:", err); }
+    }, 5000);
+  }
+
+  export async function stopGatewayBot() {
+    if (client) {
+      await client.destroy();
+      client = null;
+      console.log("Gateway getrennt");
+    }
+  }
+  
